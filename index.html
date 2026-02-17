@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SurveyOS — The Operating System for Land Survey Firms</title>
+  <meta name="description" content="SurveyOS helps small land surveying firms win more jobs, get paid faster, and stop drowning in paperwork. AI-powered phone intake, proposals, scheduling, and invoicing — built for surveyors, by surveyors.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --amber-400: #fbbf24;
+      --amber-500: #f59e0b;
+      --amber-600: #d97706;
+      --emerald-400: #34d399;
+      --emerald-500: #10b981;
+      --emerald-600: #059669;
+      --sky-400: #38bdf8;
+      --sky-500: #0ea5e9;
+      --white: #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--slate-800);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--slate-200);
+      transition: box-shadow 0.3s;
+    }
+    nav.scrolled { box-shadow: 0 1px 12px rgba(0,0,0,0.08); }
+    .nav-inner {
+      max-width: 1120px; margin: 0 auto;
+      padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .logo {
+      font-weight: 800; font-size: 1.25rem; color: var(--slate-900);
+      text-decoration: none; display: flex; align-items: center; gap: 8px;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; background: var(--slate-900);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      color: var(--amber-400); font-size: 16px; font-weight: 800;
+    }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      text-decoration: none; color: var(--slate-600); font-size: 0.9rem;
+      font-weight: 500; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--slate-900); }
+    .nav-cta {
+      background: var(--slate-900) !important; color: var(--white) !important;
+      padding: 8px 20px !important; border-radius: 8px !important;
+      font-weight: 600 !important; font-size: 0.875rem !important;
+      transition: background 0.2s !important;
+    }
+    .nav-cta:hover { background: var(--slate-700) !important; }
+
+    .mobile-toggle {
+      display: none; background: none; border: none; cursor: pointer;
+      padding: 4px; color: var(--slate-700);
+    }
+    .mobile-toggle svg { width: 24px; height: 24px; }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 140px 24px 80px;
+      background: linear-gradient(175deg, var(--slate-50) 0%, var(--white) 50%);
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: 0; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(251,191,36,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1120px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--slate-100); border: 1px solid var(--slate-200);
+      border-radius: 100px; padding: 6px 16px; font-size: 0.8rem;
+      font-weight: 600; color: var(--slate-600); margin-bottom: 24px;
+    }
+    .hero-badge-dot {
+      width: 8px; height: 8px; background: var(--emerald-500);
+      border-radius: 50%; animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: 3.25rem; font-weight: 800; line-height: 1.1;
+      color: var(--slate-900); margin-bottom: 20px;
+      letter-spacing: -0.025em;
+    }
+    .hero h1 span { color: var(--amber-500); }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--slate-600); line-height: 1.7;
+      margin-bottom: 36px; max-width: 520px;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 40px; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--slate-900); color: var(--white);
+      padding: 14px 28px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 1rem; border: none; cursor: pointer;
+      transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .btn-primary:hover { background: var(--slate-700); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--white); color: var(--slate-800);
+      padding: 14px 28px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 1rem; border: 1px solid var(--slate-300);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--slate-400); background: var(--slate-50); }
+
+    /* Phone CTA */
+    .phone-cta {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 1px solid #fde68a; border-radius: 14px;
+      padding: 20px 24px; display: flex; align-items: center; gap: 16px;
+      max-width: 520px;
+    }
+    .phone-icon-wrap {
+      width: 48px; height: 48px; min-width: 48px;
+      background: var(--amber-500); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      animation: ring 3s ease-in-out infinite;
+    }
+    @keyframes ring {
+      0%, 80%, 100% { transform: rotate(0); }
+      85% { transform: rotate(12deg); }
+      90% { transform: rotate(-12deg); }
+      95% { transform: rotate(6deg); }
+    }
+    .phone-icon-wrap svg { width: 24px; height: 24px; color: var(--white); }
+    .phone-cta-text { font-size: 0.85rem; color: var(--slate-600); line-height: 1.5; }
+    .phone-cta-text strong { display: block; color: var(--slate-900); font-size: 0.95rem; margin-bottom: 2px; }
+    .phone-cta-number {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;
+      font-weight: 600; color: var(--slate-900); text-decoration: none;
+    }
+    .phone-cta-number:hover { color: var(--amber-600); }
+
+    /* Hero Visual */
+    .hero-visual {
+      background: var(--slate-900); border-radius: 16px; padding: 2px;
+      box-shadow: 0 25px 60px rgba(15,23,42,0.25);
+      overflow: hidden; position: relative;
+    }
+    .hero-visual-bar {
+      height: 36px; background: var(--slate-800); border-radius: 14px 14px 0 0;
+      display: flex; align-items: center; padding: 0 14px; gap: 8px;
+    }
+    .hero-visual-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .hero-visual-dot.r { background: #ef4444; }
+    .hero-visual-dot.y { background: #eab308; }
+    .hero-visual-dot.g { background: #22c55e; }
+    .hero-visual-content {
+      padding: 24px; min-height: 340px;
+      background: linear-gradient(180deg, var(--slate-900) 0%, #111827 100%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem; color: var(--slate-400); line-height: 2;
+    }
+    .hero-visual-content .line { opacity: 0; animation: typeLine 0.3s forwards; }
+    .hero-visual-content .highlight { color: var(--amber-400); }
+    .hero-visual-content .green { color: var(--emerald-400); }
+    .hero-visual-content .blue { color: var(--sky-400); }
+    .hero-visual-content .dim { color: var(--slate-600); }
+    @keyframes typeLine { to { opacity: 1; } }
+
+    /* ===== PAIN SECTION ===== */
+    .pain-section {
+      padding: 100px 24px;
+      background: var(--white);
+    }
+    .pain-inner { max-width: 1120px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--amber-600); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 2.25rem; font-weight: 800; color: var(--slate-900);
+      margin-bottom: 16px; letter-spacing: -0.02em; line-height: 1.2;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--slate-500); max-width: 600px;
+      margin-bottom: 56px; line-height: 1.7;
+    }
+    .pain-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    }
+    .pain-card {
+      background: var(--slate-50); border: 1px solid var(--slate-200);
+      border-radius: 14px; padding: 32px 28px;
+      transition: all 0.25s;
+    }
+    .pain-card:hover {
+      border-color: var(--slate-300); box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      transform: translateY(-2px);
+    }
+    .pain-card-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px; font-size: 20px;
+    }
+    .pain-card h3 {
+      font-size: 1.05rem; font-weight: 700; color: var(--slate-900);
+      margin-bottom: 8px;
+    }
+    .pain-card p { font-size: 0.9rem; color: var(--slate-500); line-height: 1.6; }
+    .pain-card .stat {
+      display: inline-block; margin-top: 12px; font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem; font-weight: 700; color: var(--slate-900);
+    }
+    .pain-card .stat-label { font-size: 0.8rem; color: var(--slate-400); margin-top: 2px; }
+
+    /* ===== FEATURES ===== */
+    .features-section {
+      padding: 100px 24px;
+      background: var(--slate-900); color: var(--white);
+    }
+    .features-inner { max-width: 1120px; margin: 0 auto; }
+    .features-section .section-label { color: var(--amber-400); }
+    .features-section .section-title { color: var(--white); }
+    .features-section .section-sub { color: var(--slate-400); }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 32px 28px;
+      transition: all 0.25s;
+    }
+    .feature-card:hover {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.14);
+    }
+    .feature-card-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+    }
+    .feature-card-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; background: rgba(251,191,36,0.1);
+    }
+    .feature-card h3 {
+      font-size: 1.05rem; font-weight: 700; color: var(--white);
+    }
+    .feature-card p { font-size: 0.9rem; color: var(--slate-400); line-height: 1.65; }
+    .feature-card .tag {
+      display: inline-block; margin-top: 14px; padding: 4px 12px;
+      background: rgba(16,185,129,0.12); color: var(--emerald-400);
+      font-size: 0.75rem; font-weight: 600; border-radius: 100px;
+    }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-section {
+      padding: 100px 24px;
+      background: var(--slate-50);
+    }
+    .how-inner { max-width: 1120px; margin: 0 auto; text-align: center; }
+    .how-steps {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px;
+      margin-top: 56px; text-align: left;
+    }
+    .how-step { position: relative; }
+    .how-step-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 3rem;
+      font-weight: 800; color: var(--slate-200); line-height: 1; margin-bottom: 16px;
+    }
+    .how-step h3 {
+      font-size: 1.15rem; font-weight: 700; color: var(--slate-900); margin-bottom: 8px;
+    }
+    .how-step p { font-size: 0.9rem; color: var(--slate-500); line-height: 1.6; }
+
+    /* ===== PHONE DEMO ===== */
+    .demo-section {
+      padding: 100px 24px;
+      background: var(--white);
+    }
+    .demo-inner {
+      max-width: 720px; margin: 0 auto; text-align: center;
+    }
+    .demo-box {
+      background: linear-gradient(135deg, var(--slate-900) 0%, #1a2744 100%);
+      border-radius: 20px; padding: 56px 48px;
+      box-shadow: 0 25px 60px rgba(15,23,42,0.2);
+      position: relative; overflow: hidden;
+    }
+    .demo-box::before {
+      content: ''; position: absolute; top: -100px; right: -100px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(251,191,36,0.12) 0%, transparent 70%);
+    }
+    .demo-box h2 {
+      font-size: 1.75rem; font-weight: 800; color: var(--white);
+      margin-bottom: 12px; position: relative;
+    }
+    .demo-box p {
+      color: var(--slate-400); font-size: 1rem; margin-bottom: 36px;
+      line-height: 1.6; position: relative;
+    }
+    .demo-phone-link {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-family: 'JetBrains Mono', monospace; font-size: 1.75rem;
+      font-weight: 700; color: var(--amber-400); text-decoration: none;
+      padding: 16px 32px; border: 2px solid rgba(251,191,36,0.3);
+      border-radius: 14px; transition: all 0.3s; position: relative;
+      background: rgba(251,191,36,0.06);
+    }
+    .demo-phone-link:hover {
+      border-color: var(--amber-400); background: rgba(251,191,36,0.12);
+      transform: scale(1.02);
+    }
+    .demo-phone-link svg { width: 28px; height: 28px; }
+    .demo-note {
+      color: var(--slate-500); font-size: 0.8rem; margin-top: 20px;
+      position: relative;
+    }
+
+    /* ===== TESTIMONIAL / SOCIAL PROOF ===== */
+    .proof-section {
+      padding: 80px 24px;
+      background: var(--slate-50);
+    }
+    .proof-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+    .proof-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
+      margin-bottom: 56px;
+    }
+    .proof-stat-num {
+      font-size: 2.5rem; font-weight: 800; color: var(--slate-900);
+      line-height: 1; margin-bottom: 6px;
+    }
+    .proof-stat-label { font-size: 0.85rem; color: var(--slate-500); }
+    .proof-quote {
+      font-size: 1.3rem; font-style: italic; color: var(--slate-700);
+      line-height: 1.6; margin-bottom: 20px; max-width: 700px;
+      margin-left: auto; margin-right: auto;
+    }
+    .proof-author { font-size: 0.9rem; color: var(--slate-500); font-weight: 500; }
+
+    /* ===== CTA ===== */
+    .cta-section {
+      padding: 100px 24px;
+      background: var(--white);
+    }
+    .cta-inner {
+      max-width: 680px; margin: 0 auto; text-align: center;
+    }
+    .cta-inner h2 {
+      font-size: 2.5rem; font-weight: 800; color: var(--slate-900);
+      margin-bottom: 16px; letter-spacing: -0.02em; line-height: 1.15;
+    }
+    .cta-inner p {
+      font-size: 1.05rem; color: var(--slate-500); margin-bottom: 36px;
+      line-height: 1.7;
+    }
+    .cta-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 48px 24px;
+      background: var(--slate-900); color: var(--slate-400);
+      text-align: center; font-size: 0.85rem;
+    }
+    footer a { color: var(--slate-300); text-decoration: none; }
+    footer a:hover { color: var(--white); }
+    .footer-inner { max-width: 1120px; margin: 0 auto; }
+    .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; }
+    .footer-copy { color: var(--slate-500); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.5rem; }
+      .hero-visual { display: none; }
+      .pain-grid { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .how-steps { grid-template-columns: 1fr; gap: 32px; }
+      .proof-stats { grid-template-columns: 1fr; gap: 24px; }
+      .section-title { font-size: 1.8rem; }
+      .demo-phone-link { font-size: 1.35rem; }
+    }
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .mobile-toggle { display: block; }
+      .nav-links.open {
+        display: flex; flex-direction: column;
+        position: absolute; top: 64px; left: 0; right: 0;
+        background: var(--white); border-bottom: 1px solid var(--slate-200);
+        padding: 24px; gap: 20px;
+      }
+      .hero { padding: 120px 24px 60px; }
+      .hero h1 { font-size: 2rem; }
+      .hero-sub { font-size: 1rem; }
+      .phone-cta { flex-direction: column; text-align: center; }
+      .demo-box { padding: 40px 24px; }
+      .cta-inner h2 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-icon">S</div>
+      SurveyOS
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#demo">Try It Live</a>
+      <a href="#cta" class="nav-cta">Get Early Access</a>
+    </div>
+    <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Built for Land Surveyors
+      </div>
+      <h1>Stop running your<br>survey firm from a<br><span>spreadsheet.</span></h1>
+      <p class="hero-sub">
+        SurveyOS is the all-in-one operating system that handles your phone calls, proposals, scheduling, invoicing, and client communication — so you can spend your time in the field, not behind a desk.
+      </p>
+      <div class="hero-actions">
+        <a href="#cta" class="btn-primary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Get Early Access
+        </a>
+        <a href="#demo" class="btn-secondary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Hear Our AI Agent
+        </a>
+      </div>
+      <div class="phone-cta">
+        <div class="phone-icon-wrap">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </div>
+        <div class="phone-cta-text">
+          <strong>Call our AI receptionist right now:</strong>
+          <a href="tel:+15203958211" class="phone-cta-number">(520) 395-8211</a>
+          <br>Ask about a boundary survey and see it turn into a lead — instantly.
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-visual-bar">
+        <span class="hero-visual-dot r"></span>
+        <span class="hero-visual-dot y"></span>
+        <span class="hero-visual-dot g"></span>
+      </div>
+      <div class="hero-visual-content">
+        <div class="line" style="animation-delay:0.2s"><span class="dim">$</span> <span class="green">incoming_call</span> <span class="dim">from</span> +1 (480) 555-0142</div>
+        <div class="line" style="animation-delay:0.5s"><span class="dim">&gt;</span> AI Agent: <span class="highlight">"Good afternoon, Griss Land</span></div>
+        <div class="line" style="animation-delay:0.5s"><span class="highlight">&nbsp;&nbsp;Surveying. How can I help you?"</span></div>
+        <div class="line" style="animation-delay:0.9s">&nbsp;</div>
+        <div class="line" style="animation-delay:1.2s"><span class="dim">&gt;</span> Caller: "I need a boundary survey</div>
+        <div class="line" style="animation-delay:1.2s">&nbsp;&nbsp;at 4521 Elm Road in Tucson."</div>
+        <div class="line" style="animation-delay:1.6s">&nbsp;</div>
+        <div class="line" style="animation-delay:1.9s"><span class="dim">[</span><span class="green">LEAD CREATED</span><span class="dim">]</span></div>
+        <div class="line" style="animation-delay:2.2s">&nbsp;&nbsp;Name: <span class="blue">Sarah Mitchell</span></div>
+        <div class="line" style="animation-delay:2.5s">&nbsp;&nbsp;Type: <span class="blue">Boundary Survey</span></div>
+        <div class="line" style="animation-delay:2.8s">&nbsp;&nbsp;Addr: <span class="blue">4521 Elm Rd, Tucson AZ</span></div>
+        <div class="line" style="animation-delay:3.1s">&nbsp;&nbsp;Status: <span class="highlight">Ready for Proposal</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAIN POINTS -->
+<section class="pain-section" id="problem">
+  <div class="pain-inner">
+    <div class="section-label">The Problem</div>
+    <h2 class="section-title">You didn't start a survey firm<br>to do data entry.</h2>
+    <p class="section-sub">
+      Yet here you are — juggling voicemails, handwritten notes, five different spreadsheets, and a stack of invoices that should have gone out last week.
+    </p>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="pain-card-icon" style="background: #fef3c7;">📞</div>
+        <h3>Missed Calls = Missed Revenue</h3>
+        <p>Every call that goes to voicemail while you're in the field is a job that goes to your competitor down the road.</p>
+        <span class="stat">62%</span>
+        <div class="stat-label">of callers won't leave a voicemail</div>
+      </div>
+      <div class="pain-card">
+        <div class="pain-card-icon" style="background: #dbeafe;">📋</div>
+        <h3>Hours Lost to Paperwork</h3>
+        <p>Writing proposals in Word, copy-pasting into emails, tracking who's been invoiced in a notebook — it adds up fast.</p>
+        <span class="stat">12 hrs</span>
+        <div class="stat-label">per week on admin, on average</div>
+      </div>
+      <div class="pain-card">
+        <div class="pain-card-icon" style="background: #dcfce7;">💸</div>
+        <h3>Slow Payments Hurt Cash Flow</h3>
+        <p>If it takes two weeks to send an invoice after a job, don't be surprised when it takes two months to get paid.</p>
+        <span class="stat">45 days</span>
+        <div class="stat-label">average time to payment</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="features-inner">
+    <div class="section-label">What SurveyOS Does</div>
+    <h2 class="section-title">Everything your firm needs.<br>Nothing it doesn't.</h2>
+    <p class="section-sub">
+      One platform that replaces your voicemail, your spreadsheets, your invoicing app, and that whiteboard in the back office.
+    </p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">📞</div>
+          <h3>AI Phone Agent</h3>
+        </div>
+        <p>An AI receptionist answers every call 24/7, captures the caller's name, property address, and survey type — then drops a lead into your pipeline instantly. No more missed calls, no more voicemails.</p>
+        <span class="tag">Never Miss a Lead</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">📄</div>
+          <h3>One-Click Proposals</h3>
+        </div>
+        <p>Generate professional PDF proposals from your lead data in seconds. Customize line items, terms, and scope — then send it right from SurveyOS. No more fighting with Word templates.</p>
+        <span class="tag">Win More Jobs</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">📅</div>
+          <h3>Crew Scheduling</h3>
+        </div>
+        <p>Assign jobs to your crew chiefs with a drag-and-drop calendar. Everyone sees their schedule, and you see the full picture — who's where, and what's coming up.</p>
+        <span class="tag">Stay Organized</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">💰</div>
+          <h3>Invoicing & Payments</h3>
+        </div>
+        <p>Turn completed jobs into invoices with one click. Send them as professional PDFs via email. Track who's paid and who hasn't — and get your cash flow moving.</p>
+        <span class="tag">Get Paid Faster</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">💬</div>
+          <h3>Client SMS Updates</h3>
+        </div>
+        <p>Send automated text updates to clients when their job is scheduled, in progress, or complete. Fewer "where's my survey?" phone calls, happier clients.</p>
+        <span class="tag">Reduce Inbound Calls</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-card-icon">📧</div>
+          <h3>Email Intake</h3>
+        </div>
+        <p>Connect your Gmail and SurveyOS automatically detects survey requests in your inbox, pulls out the key details, and creates leads — so nothing falls through the cracks.</p>
+        <span class="tag">Coming Soon</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="how-inner">
+    <div class="section-label">How It Works</div>
+    <h2 class="section-title">Up and running in an afternoon.</h2>
+    <p class="section-sub" style="margin: 0 auto 0; max-width: 560px;">
+      No training manuals. No six-week implementation. Just sign up, set your rates, and start closing jobs.
+    </p>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-step-num">01</div>
+        <h3>Connect Your Phone Line</h3>
+        <p>Forward your office number to SurveyOS (or use ours). Our AI agent starts answering calls and capturing leads immediately.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">02</div>
+        <h3>Set Your Services & Rates</h3>
+        <p>Configure your survey types, base pricing, and crew members. SurveyOS uses this to generate accurate proposals in seconds.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">03</div>
+        <h3>Run Your Firm From One Screen</h3>
+        <p>See every lead, proposal, scheduled job, and unpaid invoice in one place. Send proposals, schedule crews, and invoice clients — all without leaving SurveyOS.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PHONE DEMO -->
+<section class="demo-section" id="demo">
+  <div class="demo-inner">
+    <div class="demo-box">
+      <h2>Hear It For Yourself</h2>
+      <p>Call our AI phone agent right now. Ask about a boundary survey, give it a fake address — and watch how fast a real lead shows up in the system. This isn't a recording. It's live AI.</p>
+      <a href="tel:+15203958211" class="demo-phone-link">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        (520) 395-8211
+      </a>
+      <p class="demo-note">Available 24/7. Go ahead, test it. We dare you.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="proof-section">
+  <div class="proof-inner">
+    <div class="proof-stats">
+      <div>
+        <div class="proof-stat-num">24/7</div>
+        <div class="proof-stat-label">AI Phone Coverage</div>
+      </div>
+      <div>
+        <div class="proof-stat-num">&lt; 30s</div>
+        <div class="proof-stat-label">Lead-to-Proposal Time</div>
+      </div>
+      <div>
+        <div class="proof-stat-num">10+hrs</div>
+        <div class="proof-stat-label">Saved Per Week on Admin</div>
+      </div>
+    </div>
+    <p class="proof-quote">
+      "I used to spend my mornings returning calls and my evenings writing proposals. Now I show up to the office and the leads are already there, ready to bid."
+    </p>
+    <p class="proof-author">— Early Access User, 2-Crew Firm in Arizona</p>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="cta-section" id="cta">
+  <div class="cta-inner">
+    <h2>Ready to run your firm<br>like it's 2026?</h2>
+    <p>
+      Join the early access list and be one of the first surveying firms to ditch the spreadsheets, stop missing calls, and actually get home on time.
+    </p>
+    <div class="cta-actions">
+      <a href="mailto:vancefgriss@gmail.com?subject=SurveyOS Early Access&body=I'm interested in early access to SurveyOS. My firm name is: " class="btn-primary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Request Early Access
+      </a>
+      <a href="tel:+15203958211" class="btn-secondary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Call the AI Agent
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#demo">Live Demo</a>
+      <a href="mailto:vancefgriss@gmail.com">Contact</a>
+    </div>
+    <p class="footer-copy">&copy; 2026 SurveyOS. Built for land surveyors who'd rather be in the field.</p>
+  </div>
+</footer>
+
+<script>
+  // Nav scroll effect
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Animate elements on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.pain-card, .feature-card, .how-step, .proof-stats > div').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s, transform 0.5s';
+    observer.observe(el);
+  });
+</script>
+
+</body>
+</html>
