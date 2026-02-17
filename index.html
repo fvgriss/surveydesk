@@ -401,6 +401,34 @@
     .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; }
     .footer-copy { color: var(--slate-500); }
 
+    /* ===== FORM ===== */
+    .cta-form { max-width: 520px; margin: 0 auto; }
+    .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    .form-input {
+      flex: 1; padding: 14px 16px; border: 1px solid var(--slate-300);
+      border-radius: 10px; font-size: 0.95rem; font-family: inherit;
+      color: var(--slate-800); background: var(--white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .form-input:focus {
+      outline: none; border-color: var(--slate-900);
+      box-shadow: 0 0 0 3px rgba(15,23,42,0.08);
+    }
+    .form-input::placeholder { color: var(--slate-400); }
+    select.form-input { color: var(--slate-400); cursor: pointer; width: 100%; }
+    select.form-input:valid { color: var(--slate-800); }
+    .form-submit {
+      width: 100%; justify-content: center; margin-top: 4px;
+      padding: 16px 28px; font-size: 1.05rem;
+    }
+    .form-success {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-top: 16px; padding: 16px; background: #ecfdf5;
+      border: 1px solid #a7f3d0; border-radius: 10px;
+      color: #065f46; font-weight: 600; font-size: 0.95rem;
+    }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 900px) {
       .hero-inner { grid-template-columns: 1fr; }
@@ -679,14 +707,37 @@
     <p>
       Join the early access list and be one of the first surveying firms to ditch the spreadsheets, stop missing calls, and actually get home on time.
     </p>
-    <div class="cta-actions">
-      <a href="mailto:vancefgriss@gmail.com?subject=SurveyOS Early Access&body=I'm interested in early access to SurveyOS. My firm name is: " class="btn-primary">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    <form class="cta-form" id="ctaForm" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <input type="text" name="name" placeholder="Your name" required class="form-input">
+        <input type="text" name="firm" placeholder="Firm name" required class="form-input">
+      </div>
+      <div class="form-row">
+        <input type="email" name="email" placeholder="Email address" required class="form-input">
+        <input type="tel" name="phone" placeholder="Phone (optional)" class="form-input">
+      </div>
+      <div class="form-row">
+        <select name="crew_size" class="form-input">
+          <option value="" disabled selected>How many crews?</option>
+          <option value="solo">Just me</option>
+          <option value="1">1 crew</option>
+          <option value="2">2 crews</option>
+          <option value="3+">3+ crews</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary form-submit" id="submitBtn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         Request Early Access
-      </a>
+      </button>
+      <div class="form-success" id="formSuccess" style="display:none;">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span>You're on the list! We'll be in touch soon.</span>
+      </div>
+    </form>
+    <div style="margin-top: 20px;">
       <a href="tel:+15203958211" class="btn-secondary">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        Call the AI Agent
+        Or Call the AI Agent: (520) 395-8211
       </a>
     </div>
   </div>
@@ -699,7 +750,7 @@
       <a href="#features">Features</a>
       <a href="#how">How It Works</a>
       <a href="#demo">Live Demo</a>
-      <a href="mailto:vancefgriss@gmail.com">Contact</a>
+      <a href="mailto:vance@terrainplot.com">Contact</a>
     </div>
     <p class="footer-copy">&copy; 2026 SurveyOS. Built for land surveyors who'd rather be in the field.</p>
   </div>
@@ -727,6 +778,50 @@
     el.style.transition = 'opacity 0.5s, transform 0.5s';
     observer.observe(el);
   });
+
+  // Form submission — sends to Formspree (or swap endpoint)
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('submitBtn');
+    const success = document.getElementById('formSuccess');
+    btn.disabled = true;
+    btn.innerHTML = 'Sending...';
+
+    const data = Object.fromEntries(new FormData(form));
+
+    try {
+      // Send via Formspree — replace YOUR_FORM_ID with your Formspree form ID
+      const res = await fetch('https://formspree.io/f/YOUR_FORM_ID', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) {
+        form.style.display = 'none';
+        success.style.display = 'flex';
+      } else {
+        // Fallback: open email with form data
+        const subject = encodeURIComponent('SurveyOS Early Access Request');
+        const body = encodeURIComponent(
+          `Name: ${data.name}\nFirm: ${data.firm}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nCrew Size: ${data.crew_size || 'N/A'}`
+        );
+        window.location.href = `mailto:vance@terrainplot.com?subject=${subject}&body=${body}`;
+        btn.innerHTML = 'Request Early Access';
+        btn.disabled = false;
+      }
+    } catch {
+      // Fallback: open email
+      const subject = encodeURIComponent('SurveyOS Early Access Request');
+      const body = encodeURIComponent(
+        `Name: ${data.name}\nFirm: ${data.firm}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}\nCrew Size: ${data.crew_size || 'N/A'}`
+      );
+      window.location.href = `mailto:vance@terrainplot.com?subject=${subject}&body=${body}`;
+      btn.innerHTML = 'Request Early Access';
+      btn.disabled = false;
+    }
+  }
 </script>
 
 </body>
