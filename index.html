@@ -791,8 +791,7 @@
     const data = Object.fromEntries(new FormData(form));
 
     try {
-      // Send via Formspree — replace YOUR_FORM_ID with your Formspree form ID
-      const res = await fetch('https://formspree.io/f/YOUR_FORM_ID', {
+      const res = await fetch('https://formspree.io/f/mreakjaw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(data)
