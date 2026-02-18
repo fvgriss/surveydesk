@@ -42,10 +42,15 @@ export default async function IntakePage() {
       status: leads.status,
       urgency: leads.urgency,
       notes: leads.notes,
+      callerEmail: leads.callerEmail,
+      callerPhone: leads.callerPhone,
+      specialRequests: leads.specialRequests,
       createdAt: leads.createdAt,
       contactFirstName: contacts.firstName,
       contactLastName: contacts.lastName,
       contactCompany: contacts.companyName,
+      contactPhone: contacts.phone,
+      contactEmail: contacts.email,
     })
     .from(leads)
     .leftJoin(contacts, eq(leads.contactId, contacts.id))
@@ -72,6 +77,8 @@ export default async function IntakePage() {
       leads={leadRows.map((l) => ({
         ...l,
         contactName: [l.contactFirstName, l.contactLastName].filter(Boolean).join(" "),
+        contactPhone: l.contactPhone,
+        contactEmail: l.contactEmail,
         createdAt: l.createdAt.toISOString(),
       }))}
     />

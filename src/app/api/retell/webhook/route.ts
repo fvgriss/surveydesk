@@ -240,7 +240,10 @@ export async function POST(request: NextRequest) {
           surveyType: surveyType as any,
           source: "phone_intake",
           status: "new",
-          urgency: parsed.timeline ? "high" : "medium",
+          urgency: parsed.urgency as any,
+          callerEmail: parsed.email || null,
+          callerPhone: callerPhone || parsed.phone || null,
+          specialRequests: parsed.specialRequests || null,
           notes: noteParts.join("\n\n"),
         })
         .returning();

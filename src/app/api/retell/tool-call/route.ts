@@ -73,6 +73,7 @@ async function createLead(
     survey_type?: string;
     urgency?: string;
     notes?: string;
+    special_requests?: string;
   },
   callData?: { call_id?: string; from_number?: string }
 ): Promise<string> {
@@ -148,6 +149,9 @@ async function createLead(
         source: "phone_intake",
         status: "new",
         urgency: urgency as any,
+        callerEmail: args.caller_email || null,
+        callerPhone: callerPhone || null,
+        specialRequests: args.special_requests || args.notes || null,
         notes: args.notes || null,
       })
       .returning();

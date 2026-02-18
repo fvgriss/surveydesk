@@ -284,8 +284,12 @@ export const leads = pgTable(
     source: leadSourceEnum("source").notNull().default("phone_intake"),
     status: leadStatusEnum("status").notNull().default("new"),
     urgency: urgencyEnum("urgency").notNull().default("medium"),
+    // Caller info (denormalized from contact for quick access)
+    callerEmail: varchar("caller_email", { length: 255 }),
+    callerPhone: varchar("caller_phone", { length: 20 }),
     // Context
     notes: text("notes"),
+    specialRequests: text("special_requests"),
     lostReason: text("lost_reason"), // if status = lost
     // Reference back to the call that created this lead
     callLogId: uuid("call_log_id"),

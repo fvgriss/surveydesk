@@ -42,9 +42,14 @@ type Lead = {
   status: string;
   urgency: string;
   notes: string | null;
+  callerEmail: string | null;
+  callerPhone: string | null;
+  specialRequests: string | null;
   createdAt: string;
   contactName: string;
   contactCompany: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
 };
 
 const surveyLabel: Record<string, string> = { boundary: "Boundary", alta: "ALTA/NSPS", topographic: "Topo", as_built: "As-Built" };
@@ -275,7 +280,12 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                     {lead.status.replace("_", " ")}
                   </Badge>
                 </div>
-                <div className="text-[10px] text-gray-400 mt-1.5">{formatDate(lead.createdAt)}, {formatTime(lead.createdAt)}</div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] text-gray-400">{formatDate(lead.createdAt)}, {formatTime(lead.createdAt)}</span>
+                  {(lead.callerPhone || lead.contactPhone) && <Phone size={9} className="text-gray-300" />}
+                  {(lead.callerEmail || lead.contactEmail) && <Mail size={9} className="text-gray-300" />}
+                  {lead.specialRequests && <AlertCircle size={9} className="text-purple-300" />}
+                </div>
               </div>
             ))}
           </div>
@@ -286,8 +296,21 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                   <div>
                     <h3 className="text-base font-semibold text-gray-900">{selectedLead.contactName}</h3>
                     {selectedLead.contactCompany && <div className="text-sm text-gray-500">{selectedLead.contactCompany}</div>}
+                    {(selectedLead.callerPhone || selectedLead.contactPhone || selectedLead.callerEmail || selectedLead.contactEmail) && (
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                        {(selectedLead.callerPhone || selectedLead.contactPhone) && (
+                          <span className="flex items-center gap-1"><Phone size={10} />{selectedLead.callerPhone || selectedLead.contactPhone}</span>
+                        )}
+                        {(selectedLead.callerEmail || selectedLead.contactEmail) && (
+                          <span className="flex items-center gap-1"><Mail size={10} />{selectedLead.callerEmail || selectedLead.contactEmail}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <Badge className={statusColor[selectedLead.status] || ""}>{selectedLead.status.replace("_", " ")}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge className={urgencyColor[selectedLead.urgency] || ""}>{selectedLead.urgency}</Badge>
+                    <Badge className={statusColor[selectedLead.status] || ""}>{selectedLead.status.replace("_", " ")}</Badge>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-gray-50 rounded-lg p-3">
@@ -303,6 +326,12 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                     <div className="text-xs text-gray-400 mt-1">Source: {selectedLead.source.replace("_", " ")}</div>
                   </div>
                 </div>
+                {selectedLead.specialRequests && (
+                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 mb-4">
+                    <div className="text-[10px] font-medium text-purple-600 uppercase tracking-wide">Special Requests</div>
+                    <p className="text-sm text-purple-800 mt-1">{selectedLead.specialRequests}</p>
+                  </div>
+                )}
                 {selectedLead.notes && (
                   <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4">
                     <div className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Notes</div>
