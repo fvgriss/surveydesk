@@ -84,44 +84,13 @@ const fmt = (n: number) =>
 const fmtFull = (n: number) =>
   "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const SURVEY_LABELS: Record<string, string> = {
-  boundary: "Boundary",
-  alta: "ALTA/NSPS",
-  topographic: "Topo",
-  as_built: "As-Built",
-  subdivision: "Subdivision",
-  construction: "Construction",
-  elevation_cert: "Elev. Cert",
-  route: "Route",
-  other: "Other",
-};
-
-const SURVEY_COLORS: Record<string, string> = {
-  boundary: "bg-blue-50 text-blue-700 border-blue-200",
-  alta: "bg-purple-50 text-purple-700 border-purple-200",
-  topographic: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  as_built: "bg-amber-50 text-amber-700 border-amber-200",
-  subdivision: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  construction: "bg-orange-50 text-orange-700 border-orange-200",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  scheduled: "bg-blue-50 text-blue-700 border-blue-200",
-  in_progress: "bg-amber-50 text-amber-700 border-amber-200",
-  completed: "bg-green-50 text-green-700 border-green-200",
-  cancelled: "bg-red-50 text-red-700 border-red-200",
-};
-
-const PROJECT_STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  in_progress: "bg-blue-50 text-blue-700 border-blue-200",
-  field_complete: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  drafting: "bg-purple-50 text-purple-700 border-purple-200",
-  review: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  closed: "bg-gray-50 text-gray-500 border-gray-200",
-};
+import {
+  SURVEY_LABELS,
+  SURVEY_COLORS,
+  VISIT_STATUS_COLORS as STATUS_COLORS,
+  PROJECT_STATUS_COLORS,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
 
 function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return (

@@ -4,7 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
  * GET /api/retell/ping — simple health check (no auth, no DB)
  */
 export async function GET() {
-  return NextResponse.json({ pong: true, ts: Date.now() });
+  try {
+    return NextResponse.json({ pong: true, ts: Date.now() });
+  } catch (error) {
+    console.error("Error in ping GET /api/retell/ping:", error);
+    return NextResponse.json(
+      { error: "Health check failed" },
+      { status: 500 }
+    );
+  }
 }
 
 /**

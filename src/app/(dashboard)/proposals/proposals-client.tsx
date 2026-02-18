@@ -19,9 +19,12 @@ type Proposal = {
   contactCompany: string | null;
 };
 
-const surveyLabel: Record<string, string> = { boundary: "Boundary", alta: "ALTA/NSPS", topographic: "Topo", as_built: "As-Built" };
-const surveyColor: Record<string, string> = { boundary: "bg-blue-50 text-blue-700 border-blue-200", alta: "bg-purple-50 text-purple-700 border-purple-200", topographic: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-const statusColor: Record<string, string> = { draft: "bg-gray-50 text-gray-600 border-gray-200", sent: "bg-blue-50 text-blue-700 border-blue-200", viewed: "bg-amber-50 text-amber-700 border-amber-200", accepted: "bg-emerald-50 text-emerald-700 border-emerald-200", declined: "bg-red-50 text-red-700 border-red-200", expired: "bg-gray-50 text-gray-500 border-gray-200" };
+import {
+  SURVEY_LABELS as surveyLabel,
+  SURVEY_COLORS as surveyColor,
+  PROPOSAL_STATUS_COLORS as statusColor,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
 
 function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className || "bg-gray-50 text-gray-600 border-gray-200"}`}>{children}</span>;

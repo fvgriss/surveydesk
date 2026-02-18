@@ -34,16 +34,7 @@ type Contact = {
   openInvoices: number;
 };
 
-const CONTACT_TYPES = [
-  { value: "homeowner", label: "Homeowner", color: "bg-blue-50 text-blue-700" },
-  { value: "title_company", label: "Title Company", color: "bg-purple-50 text-purple-700" },
-  { value: "realtor", label: "Realtor", color: "bg-green-50 text-green-700" },
-  { value: "attorney", label: "Attorney", color: "bg-amber-50 text-amber-700" },
-  { value: "lender", label: "Lender", color: "bg-cyan-50 text-cyan-700" },
-  { value: "contractor", label: "Contractor", color: "bg-orange-50 text-orange-700" },
-  { value: "government", label: "Government", color: "bg-red-50 text-red-700" },
-  { value: "other", label: "Other", color: "bg-gray-50 text-gray-700" },
-];
+import { CONTACT_TYPES } from "@/lib/constants";
 
 function getTypeBadge(type: string) {
   const ct = CONTACT_TYPES.find((t) => t.value === type);

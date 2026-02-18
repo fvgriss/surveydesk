@@ -67,49 +67,26 @@ type Lead = {
   createdAt: string;
 };
 
-const CONTACT_TYPES = [
-  { value: "homeowner", label: "Homeowner", color: "bg-blue-50 text-blue-700" },
-  { value: "title_company", label: "Title Company", color: "bg-purple-50 text-purple-700" },
-  { value: "realtor", label: "Realtor", color: "bg-green-50 text-green-700" },
-  { value: "attorney", label: "Attorney", color: "bg-amber-50 text-amber-700" },
-  { value: "lender", label: "Lender", color: "bg-cyan-50 text-cyan-700" },
-  { value: "contractor", label: "Contractor", color: "bg-orange-50 text-orange-700" },
-  { value: "government", label: "Government", color: "bg-red-50 text-red-700" },
-  { value: "other", label: "Other", color: "bg-gray-50 text-gray-700" },
-];
+import {
+  CONTACT_TYPES,
+  PROJECT_STATUS_COLORS,
+  INVOICE_STATUS_COLORS,
+  LEAD_STATUS_COLORS,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
 
 function getTypeBadge(type: string) {
-  return CONTACT_TYPES.find((t) => t.value === type) || { value: type, label: type, color: "bg-gray-50 text-gray-700" };
+  return CONTACT_TYPES.find((t) => t.value === type) || { value: type, label: type, color: DEFAULT_BADGE };
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-gray-100 text-gray-700",
-  in_progress: "bg-blue-50 text-blue-700",
-  field_complete: "bg-emerald-50 text-emerald-700",
-  drafting: "bg-purple-50 text-purple-700",
-  review: "bg-amber-50 text-amber-700",
-  delivered: "bg-green-50 text-green-700",
-  closed: "bg-gray-100 text-gray-500",
-  on_hold: "bg-red-50 text-red-700",
-  // Invoice statuses
-  draft: "bg-gray-100 text-gray-600",
-  sent: "bg-blue-50 text-blue-700",
-  viewed: "bg-purple-50 text-purple-700",
-  partially_paid: "bg-amber-50 text-amber-700",
-  paid: "bg-emerald-50 text-emerald-700",
-  overdue: "bg-red-50 text-red-700",
-  void: "bg-gray-100 text-gray-400",
-  // Lead statuses
-  new: "bg-blue-50 text-blue-700",
-  qualifying: "bg-amber-50 text-amber-700",
-  proposal_sent: "bg-purple-50 text-purple-700",
-  won: "bg-emerald-50 text-emerald-700",
-  lost: "bg-red-50 text-red-700",
-  expired: "bg-gray-100 text-gray-500",
+  ...PROJECT_STATUS_COLORS,
+  ...INVOICE_STATUS_COLORS,
+  ...LEAD_STATUS_COLORS,
 };
 
 function statusBadge(status: string) {
-  const color = STATUS_COLORS[status] || "bg-gray-100 text-gray-600";
+  const color = STATUS_COLORS[status] || DEFAULT_BADGE;
   return `${color} px-2 py-0.5 rounded-full text-[10px] font-medium`;
 }
 

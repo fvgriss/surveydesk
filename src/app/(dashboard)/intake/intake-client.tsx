@@ -52,10 +52,16 @@ type Lead = {
   contactEmail: string | null;
 };
 
-const surveyLabel: Record<string, string> = { boundary: "Boundary", alta: "ALTA/NSPS", topographic: "Topo", as_built: "As-Built" };
-const surveyColor: Record<string, string> = { boundary: "bg-blue-50 text-blue-700 border-blue-200", alta: "bg-purple-50 text-purple-700 border-purple-200", topographic: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-const urgencyColor: Record<string, string> = { high: "bg-red-50 text-red-700 border-red-200", medium: "bg-amber-50 text-amber-700 border-amber-200", low: "bg-gray-50 text-gray-600 border-gray-200" };
-const statusColor: Record<string, string> = { new: "bg-blue-50 text-blue-700 border-blue-200", qualifying: "bg-amber-50 text-amber-700 border-amber-200", proposal_sent: "bg-purple-50 text-purple-700 border-purple-200", won: "bg-emerald-50 text-emerald-700 border-emerald-200", lost: "bg-red-50 text-red-700 border-red-200", lead_created: "bg-emerald-50 text-emerald-700 border-emerald-200", status_update: "bg-blue-50 text-blue-700 border-blue-200", follow_up: "bg-amber-50 text-amber-700 border-amber-200" };
+import {
+  SURVEY_LABELS as surveyLabel,
+  SURVEY_COLORS as surveyColor,
+  URGENCY_COLORS as urgencyColor,
+  LEAD_STATUS_COLORS,
+  CALL_OUTCOME_COLORS,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
+
+const statusColor: Record<string, string> = { ...LEAD_STATUS_COLORS, ...CALL_OUTCOME_COLORS };
 
 function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className || "bg-gray-50 text-gray-600 border-gray-200"}`}>{children}</span>;
@@ -345,9 +351,14 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                   >
                     <FileText size={14} />Create Proposal
                   </button>
-                  <button className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5">
-                    <Phone size={14} />Call Client
-                  </button>
+                  {(selectedLead.callerPhone || selectedLead.contactPhone) && (
+                    <a
+                      href={`tel:${selectedLead.callerPhone || selectedLead.contactPhone}`}
+                      className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+                    >
+                      <Phone size={14} />Call Client
+                    </a>
+                  )}
                 </div>
               </div>
             ) : (

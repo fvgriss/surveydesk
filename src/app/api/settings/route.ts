@@ -6,66 +6,82 @@ import { getCurrentTenant } from "@/lib/utils/get-tenant";
 
 // GET /api/settings — fetch current tenant profile
 export async function GET() {
-  const tenant = await getCurrentTenant();
-  if (!tenant)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const tenant = await getCurrentTenant();
+    if (!tenant)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [firm] = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.id, tenant.tenantId))
-    .limit(1);
+    const [firm] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, tenant.tenantId))
+      .limit(1);
 
-  if (!firm)
-    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    if (!firm)
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
-  return NextResponse.json(firm);
+    return NextResponse.json(firm);
+  } catch (error) {
+    console.error("Error fetching settings GET /api/settings:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch settings" },
+      { status: 500 }
+    );
+  }
 }
 
 // PATCH /api/settings — update tenant profile
 export async function PATCH(req: NextRequest) {
-  const tenant = await getCurrentTenant();
-  if (!tenant)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const tenant = await getCurrentTenant();
+    if (!tenant)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+    const body = await req.json();
 
-  const allowedFields = [
-    "name",
-    "phone",
-    "email",
-    "address",
-    "city",
-    "state",
-    "zip",
-    "plsLicenseNumber",
-    "plsLicenseState",
-    "insuranceInfo",
-    "serviceAreaCounties",
-    "logoUrl",
-    "defaultSurveyTypes",
-    "proposalTerms",
-    "invoiceNotes",
-  ] as const;
+    const allowedFields = [
+      "name",
+      "phone",
+      "email",
+      "address",
+      "city",
+      "state",
+      "zip",
+      "plsLicenseNumber",
+      "plsLicenseState",
+      "insuranceInfo",
+      "serviceAreaCounties",
+      "logoUrl",
+      "defaultSurveyTypes",
+      "proposalTerms",
+      "invoiceNotes",
+    ] as const;
 
-  const updateFields: Record<string, unknown> = {};
-  for (const field of allowedFields) {
-    if (body[field] !== undefined) {
-      updateFields[field] = body[field];
+    const updateFields: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updateFields[field] = body[field];
+      }
     }
+
+    if (Object.keys(updateFields).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
+    updateFields.updatedAt = new Date();
+
+    const [updated] = await db
+      .update(tenants)
+      .set(updateFields)
+      .where(eq(tenants.id, tenant.tenantId))
+      .returning();
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Error updating settings PATCH /api/settings:", error);
+    return NextResponse.json(
+      { error: "Failed to update settings" },
+      { status: 500 }
+    );
   }
-
-  if (Object.keys(updateFields).length === 0) {
-    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
-  }
-
-  updateFields.updatedAt = new Date();
-
-  const [updated] = await db
-    .update(tenants)
-    .set(updateFields)
-    .where(eq(tenants.id, tenant.tenantId))
-    .returning();
-
-  return NextResponse.json(updated);
 }

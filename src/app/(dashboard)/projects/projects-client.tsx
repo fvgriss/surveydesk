@@ -4,28 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { FolderOpen, Search, Clock, Hammer, CheckCircle, Archive } from "lucide-react";
 
-const SURVEY_TYPE_LABELS: Record<string, string> = {
-  boundary: "Boundary",
-  alta: "ALTA/NSPS",
-  topographic: "Topo",
-  as_built: "As-Built",
-  subdivision: "Subdivision",
-  construction: "Construction",
-  elevation_cert: "Elev. Cert",
-  route: "Route",
-  other: "Other",
-};
+import {
+  SURVEY_LABELS as SURVEY_TYPE_LABELS,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_COLORS,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
 
-const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  pending: { label: "Pending", className: "bg-amber-100 text-amber-700" },
-  in_progress: { label: "In Progress", className: "bg-blue-100 text-blue-700" },
-  field_complete: { label: "Field Complete", className: "bg-indigo-100 text-indigo-700" },
-  drafting: { label: "Drafting", className: "bg-purple-100 text-purple-700" },
-  review: { label: "Review", className: "bg-cyan-100 text-cyan-700" },
-  delivered: { label: "Delivered", className: "bg-emerald-100 text-emerald-700" },
-  closed: { label: "Closed", className: "bg-gray-100 text-gray-500" },
-  on_hold: { label: "On Hold", className: "bg-red-100 text-red-700" },
-};
+const STATUS_BADGES: Record<string, { label: string; className: string }> = Object.fromEntries(
+  Object.entries(PROJECT_STATUS_LABELS).map(([key, label]) => [
+    key,
+    { label, className: PROJECT_STATUS_COLORS[key] || DEFAULT_BADGE },
+  ])
+);
 
 type Project = {
   id: string;

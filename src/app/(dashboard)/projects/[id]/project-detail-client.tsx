@@ -20,58 +20,19 @@ import {
 } from "lucide-react";
 import { InvoiceForm } from "./invoice-form";
 
-const SURVEY_TYPE_LABELS: Record<string, string> = {
-  boundary: "Boundary Survey",
-  alta: "ALTA/NSPS Land Title Survey",
-  topographic: "Topographic Survey",
-  as_built: "As-Built Survey",
-  subdivision: "Subdivision Survey",
-  construction: "Construction Survey",
-  elevation_cert: "Elevation Certificate",
-  route: "Route Survey",
-  other: "Survey",
-};
+import {
+  SURVEY_LABELS_FULL as SURVEY_TYPE_LABELS,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_COLORS as STATUS_COLORS,
+  VISIT_STATUS_COLORS,
+  INVOICE_STATUS_COLORS,
+  DEFAULT_BADGE,
+} from "@/lib/constants";
 
-const STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "field_complete", label: "Field Complete" },
-  { value: "drafting", label: "Drafting" },
-  { value: "review", label: "Review" },
-  { value: "delivered", label: "Delivered" },
-  { value: "closed", label: "Closed" },
-  { value: "on_hold", label: "On Hold" },
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  field_complete: "bg-indigo-100 text-indigo-700",
-  drafting: "bg-purple-100 text-purple-700",
-  review: "bg-cyan-100 text-cyan-700",
-  delivered: "bg-emerald-100 text-emerald-700",
-  closed: "bg-gray-100 text-gray-500",
-  on_hold: "bg-red-100 text-red-700",
-};
-
-const VISIT_STATUS_COLORS: Record<string, string> = {
-  scheduled: "bg-blue-100 text-blue-700",
-  confirmed: "bg-emerald-100 text-emerald-700",
-  in_progress: "bg-amber-100 text-amber-700",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-  rescheduled: "bg-purple-100 text-purple-700",
-};
-
-const INVOICE_STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600",
-  sent: "bg-blue-100 text-blue-700",
-  viewed: "bg-cyan-100 text-cyan-700",
-  partially_paid: "bg-amber-100 text-amber-700",
-  paid: "bg-emerald-100 text-emerald-700",
-  overdue: "bg-red-100 text-red-700",
-  void: "bg-gray-100 text-gray-400",
-};
+const STATUS_OPTIONS = Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 type TaskItem = {
   task: string;
