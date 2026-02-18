@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect unauthenticated users to login
   // Allow public routes: login, signup, proposal acceptance, API webhooks
   const isPublicRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/landing.html" || request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup") ||
     request.nextUrl.pathname.startsWith("/accept/") ||
     request.nextUrl.pathname.startsWith("/api/retell") ||
