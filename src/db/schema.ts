@@ -185,6 +185,13 @@ export const tenants = pgTable("tenants", {
   retellPhoneNumber: varchar("retell_phone_number", { length: 20 }),
   // Stripe
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 100 }),
+  // Subscription
+  subscriptionStatus: varchar("subscription_status", { length: 20 }).default("trialing"), // trialing | active | past_due | canceled
+  subscriptionPlan: varchar("subscription_plan", { length: 20 }).default("starter"), // starter | pro
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // Onboarding
+  onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   // Settings
   defaultSurveyTypes: jsonb("default_survey_types").$type<string[]>(),
   proposalTerms: text("proposal_terms"), // default terms & conditions

@@ -41,10 +41,13 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/landing.html" || request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup") ||
+    request.nextUrl.pathname.startsWith("/onboarding") ||
     request.nextUrl.pathname.startsWith("/accept/") ||
     request.nextUrl.pathname.startsWith("/api/retell") ||
     request.nextUrl.pathname.startsWith("/api/gmail/callback") ||
-    request.nextUrl.pathname.startsWith("/api/stripe");
+    request.nextUrl.pathname.startsWith("/api/stripe") ||
+    request.nextUrl.pathname.startsWith("/api/onboarding") ||
+    request.nextUrl.pathname.startsWith("/api/signup");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

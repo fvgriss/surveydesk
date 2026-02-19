@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Users,
   Settings,
+  CreditCard,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/billing", label: "Billing", icon: DollarSign },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/subscription", label: "Subscription", icon: CreditCard },
 ];
 
 export function DashboardShell({
