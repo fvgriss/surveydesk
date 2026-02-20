@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
       case "check_schedule":
         result = await checkSchedule(tenantId, args);
         break;
+      case "qualify_prospect":
+        result = await qualifyProspect(tenantId, args, body.call);
+        break;
       default:
         result = "I'm not able to help with that right now. Let me transfer you to our office.";
     }
@@ -252,5 +255,117 @@ async function checkSchedule(
     return `It looks like we have availability on that date. I'll have the office confirm the exact time when they send over the quote.`;
   } else {
     return `That date looks pretty full for our crews, but let me have the office check and see if we can fit it in. They'll reach out with available times.`;
+  }
+}
+
+/**
+ * Qualify a SurveyDesk sales prospect during a live call.
+ * Creates a contact + lead in the DB so the prospect shows up
+ * in SurveyDesk's own intake dashboard.
+ */
+async function qualifyProspect(
+  tenantId: string,
+  args: {
+    firm_name?: string;
+    contact_name?: string;
+    contact_phone?: string;
+    contact_email?: string;
+    firm_size?: string;
+    current_tools?: string;
+    pain_points?: string;
+    interest_level?: string;
+  },
+  callData?: { call_id?: string; from_number?: string }
+): Promise<string> {
+  try {
+    const callerPhone = args.contact_phone || callData?.from_number || null;
+    const firmName = args.firm_name || "Unknown Firm";
+    const contactName = args.contact_name || "Unknown";
+
+    // Try to find existing contact by phone
+    let contactId: string | null = null;
+    if (callerPhone) {
+      const digits = callerPhone.replace(/\D/g, "");
+      const last10 = digits.slice(-10);
+
+      if (last10.length === 10) {
+        const allContacts = await db
+          .select({ id: contacts.id, phone: contacts.phone })
+          .from(contacts)
+          .where(eq(contacts.tenantId, tenantId));
+
+        const match = allContacts.find((c) => {
+          if (!c.phone) return false;
+          return c.phone.replace(/\D/g, "").slice(-10) === last10;
+        });
+        if (match) contactId = match.id;
+      }
+    }
+
+    // Create contact if no match
+    if (!contactId) {
+      const nameParts = contactName.split(" ");
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || null;
+
+      const [newContact] = await db
+        .insert(contacts)
+        .values({
+          tenantId,
+          type: "other",
+          firstName,
+          lastName,
+          companyName: firmName,
+          phone: callerPhone,
+          email: args.contact_email || null,
+        })
+        .returning();
+
+      contactId = newContact.id;
+      console.log(`[qualify_prospect] Created contact: ${contactName} at ${firmName}`);
+    }
+
+    // Build qualifying notes
+    const noteParts: string[] = [];
+    noteParts.push(`🏢 SurveyDesk Sales Prospect — ${firmName}`);
+    if (args.firm_size) noteParts.push(`Team size: ${args.firm_size}`);
+    if (args.current_tools) noteParts.push(`Current tools: ${args.current_tools}`);
+    if (args.pain_points) noteParts.push(`Pain points: ${args.pain_points}`);
+    if (args.interest_level) noteParts.push(`Interest level: ${args.interest_level}`);
+
+    // Map interest level to urgency
+    const urgencyMap: Record<string, string> = {
+      hot: "high",
+      warm: "medium",
+      curious: "low",
+    };
+    const urgency = urgencyMap[args.interest_level || ""] || "medium";
+
+    // Create lead
+    const [newLead] = await db
+      .insert(leads)
+      .values({
+        tenantId,
+        contactId,
+        propertyAddress: `SurveyDesk Prospect — ${firmName}`,
+        surveyType: "other" as any,
+        source: "phone_intake",
+        status: "new",
+        urgency: urgency as any,
+        callerEmail: args.contact_email || null,
+        callerPhone: callerPhone || null,
+        specialRequests: args.interest_level
+          ? `Interest: ${args.interest_level}. ${args.pain_points || ""}`
+          : null,
+        notes: noteParts.join("\n"),
+      })
+      .returning();
+
+    console.log(`[qualify_prospect] Created prospect lead: ${newLead.id} — ${firmName} (${args.interest_level || "unknown"})`);
+
+    return `I've saved ${contactName}'s information for ${firmName}. Someone from our team will follow up shortly.`;
+  } catch (error) {
+    console.error("[qualify_prospect] Error:", error);
+    return `I've made a note of your information. Someone from our team will reach out to you shortly.`;
   }
 }
