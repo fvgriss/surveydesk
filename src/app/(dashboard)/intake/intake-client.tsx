@@ -16,6 +16,8 @@ import {
   X,
   RefreshCw,
   Mail,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 type Call = {
@@ -95,6 +97,7 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncingEmail, setSyncingEmail] = useState(false);
   const [emailSyncResult, setEmailSyncResult] = useState<string | null>(null);
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
 
   async function handleSync() {
     setSyncing(true);
@@ -198,7 +201,7 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
               const Icon = call.direction === "inbound" ? PhoneIncoming : call.direction === "outbound" ? PhoneOutgoing : PhoneMissed;
               const iconColor = call.direction === "missed" ? "text-red-400" : call.direction === "inbound" ? "text-green-500" : "text-blue-400";
               return (
-                <div key={call.id} onClick={() => setSelectedCall(call)}
+                <div key={call.id} onClick={() => { setSelectedCall(call); setTranscriptExpanded(false); }}
                   className={`bg-white rounded-xl border shadow-sm p-3 cursor-pointer transition-all ${selectedCall?.id === call.id ? "ring-2 ring-blue-500 border-blue-300" : "border-gray-200 hover:border-gray-300 hover:shadow"}`}>
                   <div className="flex items-start gap-2.5">
                     <Icon size={15} className={`mt-0.5 flex-shrink-0 ${iconColor}`} />
@@ -244,8 +247,25 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                 </div>
                 {selectedCall.transcript && (
                   <div className="mb-4">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Transcript Preview</div>
-                    <p className="text-sm text-gray-500 italic">&ldquo;{selectedCall.transcript.slice(0, 300)}...&rdquo;</p>
+                    <button
+                      onClick={() => setTranscriptExpanded(!transcriptExpanded)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 hover:text-gray-700 transition-colors"
+                    >
+                      Transcript
+                      {transcriptExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                    {transcriptExpanded ? (
+                      <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedCall.transcript}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic cursor-pointer" onClick={() => setTranscriptExpanded(true)}>
+                        &ldquo;{selectedCall.transcript.slice(0, 300)}{selectedCall.transcript.length > 300 ? "..." : ""}&rdquo;
+                        {selectedCall.transcript.length > 300 && (
+                          <span className="text-blue-500 text-xs ml-1 not-italic">Show full transcript</span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -302,16 +322,24 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                   <div>
                     <h3 className="text-base font-semibold text-gray-900">{selectedLead.contactName}</h3>
                     {selectedLead.contactCompany && <div className="text-sm text-gray-500">{selectedLead.contactCompany}</div>}
-                    {(selectedLead.callerPhone || selectedLead.contactPhone || selectedLead.callerEmail || selectedLead.contactEmail) && (
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                        {(selectedLead.callerPhone || selectedLead.contactPhone) && (
-                          <span className="flex items-center gap-1"><Phone size={10} />{selectedLead.callerPhone || selectedLead.contactPhone}</span>
+                    <div className="flex items-center gap-3 mt-1 text-xs">
+                      <span className="flex items-center gap-1">
+                        <Phone size={10} className={selectedLead.callerPhone || selectedLead.contactPhone ? "text-gray-400" : "text-gray-300"} />
+                        {selectedLead.callerPhone || selectedLead.contactPhone ? (
+                          <span className="text-gray-500">{selectedLead.callerPhone || selectedLead.contactPhone}</span>
+                        ) : (
+                          <span className="text-gray-300 italic">No phone</span>
                         )}
-                        {(selectedLead.callerEmail || selectedLead.contactEmail) && (
-                          <span className="flex items-center gap-1"><Mail size={10} />{selectedLead.callerEmail || selectedLead.contactEmail}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Mail size={10} className={selectedLead.callerEmail || selectedLead.contactEmail ? "text-gray-400" : "text-gray-300"} />
+                        {selectedLead.callerEmail || selectedLead.contactEmail ? (
+                          <span className="text-gray-500">{selectedLead.callerEmail || selectedLead.contactEmail}</span>
+                        ) : (
+                          <span className="text-gray-300 italic">No email</span>
                         )}
-                      </div>
-                    )}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Badge className={urgencyColor[selectedLead.urgency] || ""}>{selectedLead.urgency}</Badge>
