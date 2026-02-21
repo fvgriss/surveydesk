@@ -32,6 +32,7 @@ export default async function SubscriptionPage() {
         hasStripe: !!tenant.stripeCustomerId,
       }}
       firmName={tenant.name}
+      stripeConfigured={!!process.env.STRIPE_SECRET_KEY}
     />
   );
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+
 interface Props {
   subscription: {
     status: string;
@@ -8,6 +11,7 @@ interface Props {
     hasStripe: boolean;
   };
   firmName: string;
+  stripeConfigured: boolean;
 }
 
 const PLANS = [
@@ -48,13 +52,70 @@ const STATUS_BADGES: Record<string, { label: string; color: string }> = {
   canceled: { label: "Canceled", color: "bg-gray-100 text-gray-600 border-gray-200" },
 };
 
-export function SubscriptionClient({ subscription, firmName }: Props) {
+export function SubscriptionClient({ subscription, firmName, stripeConfigured }: Props) {
+  const searchParams = useSearchParams();
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const currentPlan = PLANS.find((p) => p.id === subscription.plan) || PLANS[0];
   const statusBadge = STATUS_BADGES[subscription.status] || STATUS_BADGES.trialing;
 
   const trialDaysLeft = subscription.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(subscription.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
+
+  // Show success banner when returning from Stripe Checkout
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setShowSuccess(true);
+      // Auto-hide after 8 seconds
+      const timer = setTimeout(() => setShowSuccess(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
+  async function handleSubscribe(plan: string) {
+    setLoading(plan);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create checkout session");
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setLoading(null);
+    }
+  }
+
+  async function handleManageBilling() {
+    setLoading("billing");
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/billing-portal", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to open billing portal");
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setLoading(null);
+    }
+  }
+
+  const canSubscribe = stripeConfigured;
+  const isActive = subscription.status === "active";
+  const hasBilling = subscription.hasStripe;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -64,6 +125,32 @@ export function SubscriptionClient({ subscription, firmName }: Props) {
           Manage your plan and billing for {firmName}
         </p>
       </div>
+
+      {/* Success Banner */}
+      {showSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium text-green-800">
+              Subscription activated! You&apos;re all set.
+            </p>
+          </div>
+          <button onClick={() => setShowSuccess(false)} className="text-green-600 hover:text-green-800">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      )}
 
       {/* Trial Banner */}
       {subscription.status === "trialing" && trialDaysLeft !== null && (
@@ -79,21 +166,35 @@ export function SubscriptionClient({ subscription, firmName }: Props) {
             </p>
           </div>
           <button
-            disabled
-            className="bg-amber-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg opacity-50 cursor-not-allowed"
-            title="Stripe integration coming soon"
+            onClick={() => handleSubscribe(subscription.plan || "starter")}
+            disabled={!canSubscribe || loading !== null}
+            className={`text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors ${
+              canSubscribe && loading === null
+                ? "bg-amber-600 hover:bg-amber-700 cursor-pointer"
+                : "bg-amber-600 opacity-50 cursor-not-allowed"
+            }`}
+            title={!canSubscribe ? "Stripe integration coming soon" : undefined}
           >
-            Subscribe Now
+            {loading === (subscription.plan || "starter") ? "Redirecting..." : "Subscribe Now"}
           </button>
         </div>
       )}
 
       {/* Past Due Banner */}
       {subscription.status === "past_due" && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
           <p className="text-sm font-medium text-red-800">
             Your payment is past due. Please update your payment method to continue using SurveyDesk.
           </p>
+          {hasBilling && (
+            <button
+              onClick={handleManageBilling}
+              disabled={loading !== null}
+              className="bg-red-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              {loading === "billing" ? "Redirecting..." : "Update Payment"}
+            </button>
+          )}
         </div>
       )}
 
@@ -138,6 +239,9 @@ export function SubscriptionClient({ subscription, firmName }: Props) {
       <div className="grid grid-cols-2 gap-4 mb-6">
         {PLANS.map((plan) => {
           const isCurrent = plan.id === subscription.plan;
+          const isUpgrade = plan.id === "pro" && subscription.plan === "starter";
+          const isDowngrade = plan.id === "starter" && subscription.plan === "pro";
+
           return (
             <div
               key={plan.id}
@@ -169,17 +273,42 @@ export function SubscriptionClient({ subscription, firmName }: Props) {
                   </li>
                 ))}
               </ul>
-              <button
-                disabled
-                className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  isCurrent
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 text-white opacity-50 cursor-not-allowed"
-                }`}
-                title="Stripe integration coming soon"
-              >
-                {isCurrent ? "Current Plan" : plan.id === "pro" ? "Upgrade" : "Downgrade"}
-              </button>
+              {isCurrent ? (
+                <button
+                  disabled
+                  className="w-full py-2 px-4 rounded-lg text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+                >
+                  Current Plan
+                </button>
+              ) : canSubscribe ? (
+                <button
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={loading !== null}
+                  className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                    loading !== null
+                      ? "bg-blue-600 text-white opacity-50 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                  }`}
+                >
+                  {loading === plan.id
+                    ? "Redirecting..."
+                    : isActive
+                    ? isUpgrade
+                      ? "Upgrade"
+                      : isDowngrade
+                      ? "Downgrade"
+                      : "Switch Plan"
+                    : "Subscribe"}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="w-full py-2 px-4 rounded-lg text-sm font-medium bg-blue-600 text-white opacity-50 cursor-not-allowed"
+                  title="Stripe integration coming soon"
+                >
+                  {isUpgrade ? "Upgrade" : isDowngrade ? "Downgrade" : "Subscribe"}
+                </button>
+              )}
             </div>
           );
         })}
@@ -192,24 +321,55 @@ export function SubscriptionClient({ subscription, firmName }: Props) {
           Manage your payment method and view invoices.
         </p>
         <div className="flex gap-3">
-          <button
-            disabled
-            className="bg-gray-100 text-gray-400 text-sm font-medium px-4 py-2 rounded-lg cursor-not-allowed"
-            title="Stripe integration coming soon"
-          >
-            Manage Payment Method
-          </button>
-          <button
-            disabled
-            className="bg-gray-100 text-gray-400 text-sm font-medium px-4 py-2 rounded-lg cursor-not-allowed"
-            title="Stripe integration coming soon"
-          >
-            View Invoices
-          </button>
+          {canSubscribe && hasBilling ? (
+            <>
+              <button
+                onClick={handleManageBilling}
+                disabled={loading !== null}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                  loading !== null
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-900 text-white hover:bg-gray-700 cursor-pointer"
+                }`}
+              >
+                {loading === "billing" ? "Redirecting..." : "Manage Payment Method"}
+              </button>
+              <button
+                onClick={handleManageBilling}
+                disabled={loading !== null}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                  loading !== null
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 cursor-pointer"
+                }`}
+              >
+                View Invoices
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                disabled
+                className="bg-gray-100 text-gray-400 text-sm font-medium px-4 py-2 rounded-lg cursor-not-allowed"
+                title={canSubscribe ? "Subscribe to a plan first" : "Stripe integration coming soon"}
+              >
+                Manage Payment Method
+              </button>
+              <button
+                disabled
+                className="bg-gray-100 text-gray-400 text-sm font-medium px-4 py-2 rounded-lg cursor-not-allowed"
+                title={canSubscribe ? "Subscribe to a plan first" : "Stripe integration coming soon"}
+              >
+                View Invoices
+              </button>
+            </>
+          )}
         </div>
-        <p className="mt-3 text-xs text-gray-400">
-          Stripe billing integration coming soon. Contact support for billing questions.
-        </p>
+        {!canSubscribe && (
+          <p className="mt-3 text-xs text-gray-400">
+            Stripe billing integration coming soon. Contact support for billing questions.
+          </p>
+        )}
       </div>
     </div>
   );
