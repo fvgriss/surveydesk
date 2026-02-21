@@ -77,9 +77,42 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
   );
 }
 
-export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
+export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
+  const [provisioning, setProvisioning] = useState<string | null>(null);
+  const [tenantList, setTenantList] = useState(initialTenants);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
+
+  const tenants = tenantList;
+
+  async function handleProvision(tenantId: string) {
+    setProvisioning(tenantId);
+    setProvisionError(null);
+    try {
+      const res = await fetch("/api/admin/provision-retell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Provisioning failed");
+
+      // Update the tenant in our local state
+      setTenantList((prev) =>
+        prev.map((t) =>
+          t.id === tenantId
+            ? { ...t, retellPhoneNumber: data.phoneNumber }
+            : t
+        )
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setProvisionError(`Failed for tenant ${tenantId}: ${msg}`);
+    } finally {
+      setProvisioning(null);
+    }
+  }
 
   const filtered = tenants.filter((t) => {
     // Search filter
@@ -171,6 +204,16 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
         />
       </div>
 
+      {/* Provision error */}
+      {provisionError && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-red-800">{provisionError}</p>
+          <button onClick={() => setProvisionError(null)} className="text-red-500 hover:text-red-700 text-xs font-medium">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -189,6 +232,9 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
                 Trial / Renewal
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">
+                Retell Phone
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">
                 Location
               </th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">
@@ -203,7 +249,7 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-8 text-center text-gray-400"
                 >
                   {search || tab !== "all"
@@ -268,6 +314,27 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
                         </span>
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {t.retellPhoneNumber ? (
+                        <span className="text-xs text-gray-600 font-mono">
+                          {t.retellPhoneNumber}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleProvision(t.id)}
+                          disabled={provisioning !== null}
+                          className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+                            provisioning === t.id
+                              ? "bg-blue-100 text-blue-500 cursor-wait"
+                              : provisioning !== null
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
+                          }`}
+                        >
+                          {provisioning === t.id ? "Provisioning..." : "Provision"}
+                        </button>
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
