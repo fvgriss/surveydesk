@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface Props {
   subscription: {
@@ -54,6 +54,7 @@ const STATUS_BADGES: Record<string, { label: string; color: string }> = {
 
 export function SubscriptionClient({ subscription, firmName, stripeConfigured }: Props) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -67,15 +68,20 @@ export function SubscriptionClient({ subscription, firmName, stripeConfigured }:
 
   const isExpired = searchParams.get("expired") === "true";
 
-  // Show success banner when returning from Stripe Checkout
+  // Show success banner when returning from Stripe Checkout,
+  // then refresh the page after a short delay so the webhook has time
+  // to update the subscription status in the DB.
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       setShowSuccess(true);
-      // Auto-hide after 8 seconds
-      const timer = setTimeout(() => setShowSuccess(false), 8000);
-      return () => clearTimeout(timer);
+      // Refresh after 2s to pick up webhook-updated status
+      const refreshTimer = setTimeout(() => {
+        router.replace("/subscription");
+        router.refresh();
+      }, 2000);
+      return () => clearTimeout(refreshTimer);
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   async function handleSubscribe(plan: string) {
     setLoading(plan);

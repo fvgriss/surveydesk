@@ -69,15 +69,8 @@ export async function POST(req: NextRequest) {
     // Build checkout session params
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app";
 
-    // If they're still in an active trial, carry over remaining trial days
-    let trialEnd: number | undefined;
-    if (tenant.subscriptionStatus === "trialing" && tenant.trialEndsAt) {
-      const trialEndDate = new Date(tenant.trialEndsAt);
-      if (trialEndDate > new Date()) {
-        trialEnd = Math.floor(trialEndDate.getTime() / 1000);
-      }
-    }
-
+    // No trial_end — when they click Subscribe, charge immediately.
+    // They already have a free trial with us; Stripe should collect payment right away.
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
@@ -85,18 +78,9 @@ export async function POST(req: NextRequest) {
       success_url: `${appUrl}/subscription?success=true`,
       cancel_url: `${appUrl}/subscription`,
       metadata: { tenantId: tenant.id },
-      ...(trialEnd
-        ? {
-            subscription_data: {
-              trial_end: trialEnd,
-              metadata: { tenantId: tenant.id },
-            },
-          }
-        : {
-            subscription_data: {
-              metadata: { tenantId: tenant.id },
-            },
-          }),
+      subscription_data: {
+        metadata: { tenantId: tenant.id },
+      },
     });
 
     console.log(`[Stripe] Created checkout session ${session.id} for tenant ${tenant.id} (${plan})`);
