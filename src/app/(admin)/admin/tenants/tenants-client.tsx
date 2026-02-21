@@ -11,19 +11,115 @@ type Tenant = {
   phone: string | null;
   city: string | null;
   state: string | null;
+  subscriptionStatus: string | null;
+  subscriptionPlan: string | null;
+  trialEndsAt: string | null;
+  retellPhoneNumber: string | null;
+  onboardingComplete: boolean | null;
   createdAt: string;
   userCount: number;
 };
 
+type FilterTab = "all" | "trialing" | "active" | "expired";
+
+function getDaysLeft(trialEndsAt: string | null): number | null {
+  if (!trialEndsAt) return null;
+  const now = new Date();
+  const end = new Date(trialEndsAt);
+  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | null }) {
+  const expired = status === "trialing" && daysLeft !== null && daysLeft <= 0;
+
+  if (status === "active") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        Active
+      </span>
+    );
+  }
+  if (expired) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        Expired
+      </span>
+    );
+  }
+  if (status === "trialing") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+        Trial
+      </span>
+    );
+  }
+  if (status === "past_due") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        Past Due
+      </span>
+    );
+  }
+  if (status === "canceled") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+        Canceled
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs text-gray-500">{status}</span>
+  );
+}
+
 export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<FilterTab>("all");
 
-  const filtered = tenants.filter(
-    (t) =>
+  const filtered = tenants.filter((t) => {
+    // Search filter
+    const matchesSearch =
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       (t.email && t.email.toLowerCase().includes(search.toLowerCase())) ||
-      (t.city && t.city.toLowerCase().includes(search.toLowerCase()))
-  );
+      (t.city && t.city.toLowerCase().includes(search.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    // Tab filter
+    const daysLeft = getDaysLeft(t.trialEndsAt);
+    const status = t.subscriptionStatus || "trialing";
+
+    if (tab === "trialing") return status === "trialing" && (daysLeft === null || daysLeft > 0);
+    if (tab === "active") return status === "active";
+    if (tab === "expired") return status === "trialing" && daysLeft !== null && daysLeft <= 0;
+    return true;
+  });
+
+  // Counts for tabs
+  const counts = {
+    all: tenants.length,
+    trialing: tenants.filter((t) => {
+      const dl = getDaysLeft(t.trialEndsAt);
+      return (t.subscriptionStatus || "trialing") === "trialing" && (dl === null || dl > 0);
+    }).length,
+    active: tenants.filter((t) => t.subscriptionStatus === "active").length,
+    expired: tenants.filter((t) => {
+      const dl = getDaysLeft(t.trialEndsAt);
+      return (t.subscriptionStatus || "trialing") === "trialing" && dl !== null && dl <= 0;
+    }).length,
+  };
+
+  const tabs: { key: FilterTab; label: string }[] = [
+    { key: "all", label: `All (${counts.all})` },
+    { key: "trialing", label: `Trialing (${counts.trialing})` },
+    { key: "active", label: `Paid (${counts.active})` },
+    { key: "expired", label: `Expired (${counts.expired})` },
+  ];
 
   return (
     <div className="p-6">
@@ -31,8 +127,7 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {tenants.length} firm{tenants.length !== 1 ? "s" : ""} on the
-            platform
+            {tenants.length} firm{tenants.length !== 1 ? "s" : ""} on the platform
           </p>
         </div>
         <Link
@@ -42,6 +137,23 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
           <Plus size={16} />
           New Tenant
         </Link>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              tab === t.key
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Search */}
@@ -68,7 +180,13 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
                 Firm Name
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">
-                Email
+                Status
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">
+                Plan
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">
+                Trial / Renewal
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">
                 Location
@@ -77,7 +195,7 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
                 Users
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">
-                Created
+                Signed Up
               </th>
             </tr>
           </thead>
@@ -85,49 +203,89 @@ export function TenantsClient({ tenants }: { tenants: Tenant[] }) {
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   className="px-4 py-8 text-center text-gray-400"
                 >
-                  {search ? "No tenants match your search." : "No tenants yet."}
+                  {search || tab !== "all"
+                    ? "No tenants match your filters."
+                    : "No tenants yet."}
                 </td>
               </tr>
             ) : (
-              filtered.map((t) => (
-                <tr
-                  key={t.id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/tenants/${t.id}`}
-                      className="flex items-center gap-2"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                        <Building2 size={14} className="text-slate-500" />
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {t.name}
+              filtered.map((t) => {
+                const daysLeft = getDaysLeft(t.trialEndsAt);
+                const status = t.subscriptionStatus || "trialing";
+                const trialExpired = status === "trialing" && daysLeft !== null && daysLeft <= 0;
+
+                return (
+                  <tr
+                    key={t.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/tenants/${t.id}`}
+                        className="flex items-center gap-2"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                          <Building2 size={14} className="text-slate-500" />
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">
+                            {t.name}
+                          </span>
+                          {!t.onboardingComplete && (
+                            <span className="ml-1.5 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">
+                              ONBOARDING
+                            </span>
+                          )}
+                          <p className="text-xs text-gray-400">{t.email || "—"}</p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={status} daysLeft={daysLeft} />
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 capitalize text-xs">
+                      {t.subscriptionPlan || "starter"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {status === "active" && t.trialEndsAt ? (
+                        <span className="text-xs text-gray-600">
+                          Renews {new Date(t.trialEndsAt).toLocaleDateString()}
+                        </span>
+                      ) : daysLeft !== null ? (
+                        <span
+                          className={`text-xs font-medium ${
+                            trialExpired
+                              ? "text-red-600"
+                              : daysLeft <= 3
+                              ? "text-orange-600"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          {trialExpired ? "Expired" : `${daysLeft}d left`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {t.city && t.state
+                        ? `${t.city}, ${t.state}`
+                        : t.state || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                        {t.userCount}
                       </span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {t.email || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {t.city && t.state
-                      ? `${t.city}, ${t.state}`
-                      : t.state || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
-                      {t.userCount}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {new Date(t.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-400">
+                      {new Date(t.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

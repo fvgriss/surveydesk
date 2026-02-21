@@ -12,6 +12,11 @@ export default async function TenantsPage() {
       phone: tenants.phone,
       city: tenants.city,
       state: tenants.state,
+      subscriptionStatus: tenants.subscriptionStatus,
+      subscriptionPlan: tenants.subscriptionPlan,
+      trialEndsAt: tenants.trialEndsAt,
+      retellPhoneNumber: tenants.retellPhoneNumber,
+      onboardingComplete: tenants.onboardingComplete,
       createdAt: tenants.createdAt,
       userCount: sql<number>`(SELECT COUNT(*) FROM users WHERE users.tenant_id = ${tenants.id})`.as("user_count"),
     })
@@ -23,6 +28,7 @@ export default async function TenantsPage() {
     ...t,
     userCount: Number(t.userCount),
     createdAt: t.createdAt.toISOString(),
+    trialEndsAt: t.trialEndsAt ? t.trialEndsAt.toISOString() : null,
   }));
 
   return <TenantsClient tenants={serialized} />;
