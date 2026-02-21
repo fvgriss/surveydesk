@@ -34,12 +34,27 @@ const NAV_ITEMS = [
   { href: "/subscription", label: "Subscription", icon: CreditCard },
 ];
 
+function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
 export function DashboardShell({
   user,
   children,
+  firmName,
+  retellPhoneNumber,
 }: {
   user: User;
   children: React.ReactNode;
+  firmName?: string | null;
+  retellPhoneNumber?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
@@ -69,14 +84,31 @@ export function DashboardShell({
           collapsed ? "w-16" : "w-56"
         }`}
       >
-        <div className="p-4 flex items-center gap-2.5 border-b border-gray-800">
-          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-            <MapPin size={16} className="text-white" />
+        <div className="p-4 border-b border-gray-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <MapPin size={16} className="text-white" />
+            </div>
+            {!collapsed && (
+              <span className="font-bold text-base tracking-tight">
+                SurveyDesk
+              </span>
+            )}
           </div>
-          {!collapsed && (
-            <span className="font-bold text-base tracking-tight">
-              SurveyDesk
-            </span>
+          {!collapsed && (firmName || retellPhoneNumber) && (
+            <div className="mt-2.5 pl-[42px]">
+              {firmName && (
+                <p className="text-sm font-medium text-gray-300 truncate">
+                  {firmName}
+                </p>
+              )}
+              {retellPhoneNumber && (
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <Phone size={11} className="flex-shrink-0" />
+                  {formatPhone(retellPhoneNumber)}
+                </p>
+              )}
+            </div>
           )}
         </div>
         <nav className="flex-1 py-3 px-2 space-y-0.5">

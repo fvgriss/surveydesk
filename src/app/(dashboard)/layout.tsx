@@ -28,9 +28,16 @@ export default async function DashboardLayout({
     .where(eq(users.authId, user.id))
     .limit(1);
 
+  let firmName: string | null = null;
+  let retellPhoneNumber: string | null = null;
+
   if (dbUser) {
     const [tenant] = await db
-      .select({ onboardingComplete: tenants.onboardingComplete })
+      .select({
+        onboardingComplete: tenants.onboardingComplete,
+        name: tenants.name,
+        retellPhoneNumber: tenants.retellPhoneNumber,
+      })
       .from(tenants)
       .where(eq(tenants.id, dbUser.tenantId))
       .limit(1);
@@ -38,7 +45,14 @@ export default async function DashboardLayout({
     if (tenant && !tenant.onboardingComplete) {
       redirect("/onboarding");
     }
+
+    firmName = tenant?.name || null;
+    retellPhoneNumber = tenant?.retellPhoneNumber || null;
   }
 
-  return <DashboardShell user={user}>{children}</DashboardShell>;
+  return (
+    <DashboardShell user={user} firmName={firmName} retellPhoneNumber={retellPhoneNumber}>
+      {children}
+    </DashboardShell>
+  );
 }
