@@ -84,10 +84,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // --- Determine tenant ---
-    const tenantId = process.env.DEFAULT_TENANT_ID;
+    // --- Determine tenant (by agent ID → tenant mapping, fallback to DEFAULT_TENANT_ID) ---
+    const { resolveTenantId } = await import("@/lib/retell/resolve-tenant");
+    const tenantId = await resolveTenantId(call?.agent_id);
     if (!tenantId) {
-      console.error("DEFAULT_TENANT_ID not set — cannot process webhook");
+      console.error("Could not determine tenant for agent:", call?.agent_id);
       return NextResponse.json({ error: "no tenant" }, { status: 500 });
     }
 

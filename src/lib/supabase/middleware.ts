@@ -47,7 +47,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/gmail/callback") ||
     request.nextUrl.pathname.startsWith("/api/stripe") ||
     request.nextUrl.pathname.startsWith("/api/onboarding") ||
-    request.nextUrl.pathname.startsWith("/api/signup");
+    request.nextUrl.pathname.startsWith("/api/signup") ||
+    request.nextUrl.pathname.startsWith("/setup-forwarding");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

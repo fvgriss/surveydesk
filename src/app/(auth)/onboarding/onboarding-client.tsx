@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
@@ -9,6 +10,21 @@ const US_STATES = [
   "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
   "VA","WA","WV","WI","WY","DC",
 ];
+
+/**
+ * Format E.164 phone number (+15205551234) to human-readable ((520) 555-1234)
+ */
+function formatPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  // Handle +1XXXXXXXXXX
+  const national = digits.length === 11 && digits.startsWith("1")
+    ? digits.slice(1)
+    : digits;
+  if (national.length === 10) {
+    return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
+  }
+  return e164;
+}
 
 interface TenantData {
   name: string;
@@ -25,10 +41,11 @@ interface TenantData {
 
 interface Props {
   ownerName: string;
+  retellPhoneNumber: string | null;
   tenant: TenantData;
 }
 
-export function OnboardingClient({ ownerName, tenant }: Props) {
+export function OnboardingClient({ ownerName, retellPhoneNumber, tenant }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -36,6 +53,7 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
   const [form, setForm] = useState<TenantData>(tenant);
 
   const firstName = ownerName.split(" ")[0] || ownerName;
+  const totalSteps = 3; // welcome, address, credentials
 
   const update = (field: keyof TenantData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -45,7 +63,6 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
     setError("");
     setSaving(true);
     try {
-      // Save current step data via settings API
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -96,7 +113,7 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
       <div className="w-full max-w-lg">
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {[0, 1, 2].map((i) => (
+          {Array.from({ length: totalSteps }).map((_, i) => (
             <div
               key={i}
               className={`h-2 rounded-full transition-all ${
@@ -122,17 +139,68 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
             <span className="font-bold text-lg text-gray-900">SurveyDesk</span>
           </div>
 
-          {/* Step 0: Welcome */}
+          {/* Step 0: Welcome — Your AI Phone Agent */}
           {step === 0 && (
             <div>
               <h1 className="text-xl font-semibold text-gray-900 mb-1">
                 Welcome, {firstName}!
               </h1>
               <p className="text-sm text-gray-500 mb-6">
-                Let&apos;s get your firm set up. This takes about 2 minutes.
+                Your AI phone agent is ready to go.
               </p>
 
-              <div className="space-y-4">
+              {/* Phone number display */}
+              {retellPhoneNumber ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-5">
+                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">
+                    Your SurveyDesk Number
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 tracking-tight">
+                    {formatPhone(retellPhoneNumber)}
+                  </p>
+                  <p className="text-sm text-blue-700 mt-2">
+                    Any call to this number gets answered, qualified, and turned into a lead in your dashboard.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-5">
+                  <p className="text-sm text-gray-600">
+                    Your AI phone number is being set up. You can find it in your dashboard once it&apos;s ready.
+                  </p>
+                </div>
+              )}
+
+              {/* Try It Now */}
+              {retellPhoneNumber && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-5">
+                  <p className="font-medium text-green-900 mb-1">
+                    Try it now
+                  </p>
+                  <p className="text-sm text-green-700">
+                    Call <span className="font-semibold">{formatPhone(retellPhoneNumber)}</span> from your cell phone. Pretend you&apos;re a homeowner who needs a boundary survey. The AI will handle the call, and you&apos;ll see the lead appear in your dashboard in about 30 seconds.
+                  </p>
+                </div>
+              )}
+
+              {/* Set Up Forwarding */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                <p className="font-medium text-gray-900 mb-1">
+                  Set up forwarding (optional)
+                </p>
+                <p className="text-sm text-gray-600">
+                  Ready to go live? Forward your office number to your SurveyDesk number so every real call gets answered.{" "}
+                  <Link
+                    href="/setup-forwarding"
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    target="_blank"
+                  >
+                    View forwarding guide &rarr;
+                  </Link>
+                </p>
+              </div>
+
+              {/* Firm basics (name, phone, email) — pre-filled from signup */}
+              <div className="mt-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Firm Name
@@ -145,29 +213,31 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
                     placeholder="Acme Land Surveying"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Firm Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => update("phone", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="(512) 555-1234"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Firm Email
-                  </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => update("email", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="office@yourfirm.com"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Firm Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => update("phone", e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="(512) 555-1234"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Firm Email
+                    </label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => update("email", e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="office@yourfirm.com"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -324,7 +394,7 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
               <div />
             )}
 
-            {step < 2 ? (
+            {step < totalSteps - 1 ? (
               <button
                 onClick={saveAndContinue}
                 disabled={saving}
@@ -345,7 +415,7 @@ export function OnboardingClient({ ownerName, tenant }: Props) {
         </div>
 
         {/* Skip link */}
-        {step === 2 && (
+        {step === totalSteps - 1 && (
           <div className="text-center mt-4">
             <button
               onClick={completeOnboarding}

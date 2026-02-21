@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
     const fnName = searchParams.get("fn") || body.name;
     const args = body.args || body.arguments || {};
 
-    const tenantId = process.env.DEFAULT_TENANT_ID;
+    // Resolve tenant by agent ID (from call data), fallback to DEFAULT_TENANT_ID
+    const { resolveTenantId } = await import("@/lib/retell/resolve-tenant");
+    const agentId = body.call?.agent_id || body.agent_id;
+    const tenantId = await resolveTenantId(agentId);
     if (!tenantId) {
       return NextResponse.json({ result: "System unavailable" });
     }

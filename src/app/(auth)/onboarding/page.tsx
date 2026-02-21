@@ -43,6 +43,7 @@ export default async function OnboardingPage() {
       plsLicenseState: tenants.plsLicenseState,
       serviceAreaCounties: tenants.serviceAreaCounties,
       onboardingComplete: tenants.onboardingComplete,
+      retellPhoneNumber: tenants.retellPhoneNumber,
     })
     .from(tenants)
     .where(eq(tenants.id, dbUser.tenantId))
@@ -56,6 +57,7 @@ export default async function OnboardingPage() {
   return (
     <OnboardingClient
       ownerName={dbUser.fullName}
+      retellPhoneNumber={tenant.retellPhoneNumber || null}
       tenant={{
         name: tenant.name,
         phone: tenant.phone || "",

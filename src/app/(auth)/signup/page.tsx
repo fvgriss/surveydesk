@@ -5,10 +5,27 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+  "VA","WA","WV","WI","WY","DC",
+];
+
+const FIRM_SIZES = [
+  "Just me",
+  "2–3 people",
+  "4–6 people",
+  "7+",
+];
+
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [firmName, setFirmName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [state, setState] = useState("");
+  const [firmSize, setFirmSize] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +42,15 @@ export default function SignupPage() {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password, firmName }),
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          firmName,
+          phone,
+          state,
+          firmSize,
+        }),
       });
 
       const data = await res.json();
@@ -87,6 +112,8 @@ export default function SignupPage() {
           </h1>
           <p className="text-sm text-gray-500 mb-6">
             14 days free. No credit card required.
+            <br />
+            Get your own AI phone number and dashboard in 60 seconds.
           </p>
 
           <form onSubmit={handleSignup} className="space-y-4">
@@ -131,6 +158,57 @@ export default function SignupPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="(512) 555-1234"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  required
+                >
+                  <option value="">Select state</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Firm Size
+                </label>
+                <select
+                  value={firmSize}
+                  onChange={(e) => setFirmSize(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  required
+                >
+                  <option value="">Select</option>
+                  {FIRM_SIZES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
               <input
@@ -155,7 +233,7 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Setting up your account..." : "Start Free Trial"}
             </button>
           </form>
 
