@@ -3,8 +3,9 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DashboardShell } from "./dashboard-shell";
+import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { db } from "@/db";
-import { users, tenants } from "@/db/schema";
+import { tenants } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function DashboardLayout({
@@ -21,17 +22,16 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Check if tenant has completed onboarding
-  const [dbUser] = await db
-    .select({ tenantId: users.tenantId })
-    .from(users)
-    .where(eq(users.authId, user.id))
-    .limit(1);
+  // Use getCurrentTenant which respects impersonation cookie
+  const auth = await getCurrentTenant();
 
   let firmName: string | null = null;
   let retellPhoneNumber: string | null = null;
+  let isImpersonating = false;
 
-  if (dbUser) {
+  if (auth) {
+    isImpersonating = !!auth.impersonating;
+
     const [tenant] = await db
       .select({
         onboardingComplete: tenants.onboardingComplete,
@@ -39,10 +39,11 @@ export default async function DashboardLayout({
         retellPhoneNumber: tenants.retellPhoneNumber,
       })
       .from(tenants)
-      .where(eq(tenants.id, dbUser.tenantId))
+      .where(eq(tenants.id, auth.tenantId))
       .limit(1);
 
-    if (tenant && !tenant.onboardingComplete) {
+    // Skip onboarding redirect when impersonating
+    if (tenant && !tenant.onboardingComplete && !isImpersonating) {
       redirect("/onboarding");
     }
 
@@ -51,7 +52,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell user={user} firmName={firmName} retellPhoneNumber={retellPhoneNumber}>
+    <DashboardShell
+      user={user}
+      firmName={firmName}
+      retellPhoneNumber={retellPhoneNumber}
+      isImpersonating={isImpersonating}
+    >
       {children}
     </DashboardShell>
   );

@@ -111,9 +111,9 @@ export default function TenantDetailPage() {
         method: "POST",
       });
       const data = await res.json();
-      if (res.ok && data.redirectUrl) {
-        // Navigate to Supabase magic link to switch auth session to the tenant's owner
-        window.location.href = data.redirectUrl;
+      if (res.ok && data.success) {
+        // Cookie is set — navigate to dashboard which will now show the impersonated tenant
+        window.location.href = "/dashboard";
       } else {
         setError(data.error || "Failed to impersonate");
       }

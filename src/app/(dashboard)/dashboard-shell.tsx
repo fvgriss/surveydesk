@@ -50,10 +50,12 @@ export function DashboardShell({
   children,
   firmName,
   retellPhoneNumber,
+  isImpersonating,
 }: {
   user: User;
   children: React.ReactNode;
   firmName?: string | null;
+  isImpersonating?: boolean;
   retellPhoneNumber?: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -65,6 +67,11 @@ export function DashboardShell({
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  };
+
+  const handleExitImpersonation = async () => {
+    await fetch("/api/admin/exit-impersonation", { method: "POST" });
+    window.location.href = "/admin/tenants";
   };
 
   const initials = user.email
@@ -162,6 +169,21 @@ export function DashboardShell({
           collapsed ? "ml-16" : "ml-56"
         }`}
       >
+        {/* Impersonation banner */}
+        {isImpersonating && (
+          <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm">
+            <span className="font-medium">
+              Viewing as: {firmName || "Unknown tenant"}
+            </span>
+            <button
+              onClick={handleExitImpersonation}
+              className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-medium px-3 py-1 rounded transition-colors"
+            >
+              Exit impersonation
+            </button>
+          </div>
+        )}
+
         {/* Top bar */}
         <div className="flex items-center justify-end py-3 px-6 bg-white border-b border-gray-100">
           <div className="flex items-center gap-3">

@@ -78,7 +78,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/admin") ||
     request.nextUrl.pathname.startsWith("/setup-forwarding");
 
-  if (user && !isPublicRoute && !isTrialExempt) {
+  // Skip trial enforcement for super admins impersonating a tenant
+  const isImpersonating = request.cookies.has("impersonate_tenant");
+
+  if (user && !isPublicRoute && !isTrialExempt && !isImpersonating) {
     // Look up the user's tenant subscription status via Supabase (Edge-safe)
     const { data: dbUser } = await supabase
       .from("users")
