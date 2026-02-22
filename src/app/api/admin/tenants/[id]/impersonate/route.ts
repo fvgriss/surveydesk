@@ -66,7 +66,8 @@ export async function POST(
 
     // Use the token to sign in — redirect to the verification endpoint
     // The hashed_token from generateLink can be used to verify and create a session
-    const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${data.properties.hashed_token}&type=magiclink&redirect_to=${encodeURIComponent(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")}/dashboard`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app";
+    const verifyUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${data.properties.hashed_token}&type=magiclink&redirect_to=${encodeURIComponent(`${appUrl}/dashboard`)}`;
 
     return NextResponse.json({ redirectUrl: verifyUrl });
   } catch (error) {
