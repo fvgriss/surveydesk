@@ -122,17 +122,35 @@ export async function provisionRetellAgent(opts: {
   console.log(`[provision] Created agent: ${agentId} for ${opts.firmName}`);
 
   // 3. Buy a phone number with area code matching their state
+  // Falls back to no area code preference if the state-specific one isn't available
   const areaCode = opts.state ? STATE_AREA_CODES[opts.state] : undefined;
 
-  const phoneNumber = await retell.phoneNumber.create({
-    area_code: areaCode ? parseInt(areaCode) : undefined,
-    inbound_agent_id: agentId,
-    nickname: `${opts.firmName} intake`,
-  });
+  let phoneNumber;
+  if (areaCode) {
+    try {
+      phoneNumber = await retell.phoneNumber.create({
+        area_code: parseInt(areaCode),
+        inbound_agent_id: agentId,
+        nickname: `${opts.firmName} intake`,
+      });
+      console.log(`[provision] Got number with area code ${areaCode} for ${opts.firmName}`);
+    } catch {
+      console.log(`[provision] Area code ${areaCode} unavailable, trying without area code preference`);
+      phoneNumber = await retell.phoneNumber.create({
+        inbound_agent_id: agentId,
+        nickname: `${opts.firmName} intake`,
+      });
+    }
+  } else {
+    phoneNumber = await retell.phoneNumber.create({
+      inbound_agent_id: agentId,
+      nickname: `${opts.firmName} intake`,
+    });
+  }
 
   const number = phoneNumber.phone_number; // E.164 format
   console.log(
-    `[provision] Provisioned number: ${number} (area code: ${areaCode || "default"}) for ${opts.firmName}`
+    `[provision] Provisioned number: ${number} for ${opts.firmName}`
   );
 
   return {
