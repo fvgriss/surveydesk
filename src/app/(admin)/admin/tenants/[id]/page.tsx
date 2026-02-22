@@ -106,13 +106,18 @@ export default function TenantDetailPage() {
   };
 
   const handleImpersonate = async () => {
-    const res = await fetch(`/api/admin/tenants/${id}/impersonate`, {
-      method: "POST",
-    });
-    if (res.ok) {
-      router.push("/dashboard");
-      router.refresh();
-    } else {
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/impersonate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.redirectUrl) {
+        // Navigate to Supabase magic link to switch auth session to the tenant's owner
+        window.location.href = data.redirectUrl;
+      } else {
+        setError(data.error || "Failed to impersonate");
+      }
+    } catch {
       setError("Failed to impersonate");
     }
   };
