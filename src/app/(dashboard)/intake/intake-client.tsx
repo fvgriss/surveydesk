@@ -65,6 +65,42 @@ import {
 
 const statusColor: Record<string, string> = { ...LEAD_STATUS_COLORS, ...CALL_OUTCOME_COLORS };
 
+/**
+ * Parse structured notes written by the AI agent.
+ * Format: "KEY: value" on each line.
+ */
+function parseStructuredNotes(notes: string | null): {
+  timeline?: string;
+  reason?: string;
+  propertyOwner?: string;
+  callerType?: string;
+  lotSize?: string;
+  freeformNotes?: string;
+} {
+  if (!notes) return {};
+  const result: Record<string, string> = {};
+  const freeform: string[] = [];
+
+  for (const line of notes.split("\n")) {
+    const match = line.match(/^(TIMELINE|REASON|PROPERTY OWNER|CALLER TYPE|LOT SIZE|NOTES):\s*(.+)/i);
+    if (match) {
+      const key = match[1].toUpperCase();
+      const val = match[2].trim();
+      if (key === "TIMELINE") result.timeline = val;
+      else if (key === "REASON") result.reason = val;
+      else if (key === "PROPERTY OWNER") result.propertyOwner = val;
+      else if (key === "CALLER TYPE") result.callerType = val;
+      else if (key === "LOT SIZE") result.lotSize = val;
+      else if (key === "NOTES") freeform.push(val);
+    } else if (line.trim()) {
+      freeform.push(line.trim());
+    }
+  }
+
+  if (freeform.length > 0) result.freeformNotes = freeform.join("\n");
+  return result;
+}
+
 function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className || "bg-gray-50 text-gray-600 border-gray-200"}`}>{children}</span>;
 }
@@ -346,32 +382,66 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                     <Badge className={statusColor[selectedLead.status] || ""}>{selectedLead.status.replace("_", " ")}</Badge>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Property</div>
-                    <div className="text-sm text-gray-700 mt-1">{selectedLead.propertyAddress}</div>
-                    {selectedLead.parcelNumber && <div className="text-xs text-gray-400 mt-0.5">Parcel: {selectedLead.parcelNumber}</div>}
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Survey Type</div>
-                    <div className="mt-1">
-                      <Badge className={surveyColor[selectedLead.surveyType] || ""}>{surveyLabel[selectedLead.surveyType] || selectedLead.surveyType}</Badge>
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">Source: {selectedLead.source.replace("_", " ")}</div>
-                  </div>
-                </div>
-                {selectedLead.specialRequests && (
-                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 mb-4">
-                    <div className="text-[10px] font-medium text-purple-600 uppercase tracking-wide">Special Requests</div>
-                    <p className="text-sm text-purple-800 mt-1">{selectedLead.specialRequests}</p>
-                  </div>
-                )}
-                {selectedLead.notes && (
-                  <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4">
-                    <div className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Notes</div>
-                    <p className="text-sm text-amber-800 mt-1">{selectedLead.notes}</p>
-                  </div>
-                )}
+                {(() => {
+                  const parsed = parseStructuredNotes(selectedLead.notes);
+                  return (
+                    <>
+                      {/* Top row: Property + Survey Type */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Property</div>
+                          <div className="text-sm text-gray-700 mt-1">{selectedLead.propertyAddress}</div>
+                          {selectedLead.parcelNumber && <div className="text-xs text-gray-400 mt-0.5">Parcel: {selectedLead.parcelNumber}</div>}
+                          {parsed.propertyOwner && <div className="text-xs text-gray-500 mt-0.5">Owner: {parsed.propertyOwner}</div>}
+                          {parsed.lotSize && <div className="text-xs text-gray-500 mt-0.5">Lot size: {parsed.lotSize}</div>}
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Survey Type</div>
+                          <div className="mt-1">
+                            <Badge className={surveyColor[selectedLead.surveyType] || ""}>{surveyLabel[selectedLead.surveyType] || selectedLead.surveyType}</Badge>
+                          </div>
+                          {parsed.reason && <div className="text-xs text-gray-500 mt-1">Reason: {parsed.reason.replace("_", " ")}</div>}
+                          <div className="text-xs text-gray-400 mt-0.5">Source: {selectedLead.source.replace("_", " ")}</div>
+                        </div>
+                      </div>
+
+                      {/* Second row: Timeline + Caller info (only if we have structured data) */}
+                      {(parsed.timeline || parsed.callerType) && (
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          {parsed.timeline && (
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                              <div className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">Timeline</div>
+                              <div className="text-sm text-blue-800 mt-1">{parsed.timeline}</div>
+                            </div>
+                          )}
+                          {parsed.callerType && (
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Caller Type</div>
+                              <div className="text-sm text-gray-700 mt-1 capitalize">{parsed.callerType}</div>
+                              {selectedLead.contactCompany && <div className="text-xs text-gray-400 mt-0.5">{selectedLead.contactCompany}</div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Special Requests */}
+                      {selectedLead.specialRequests && (
+                        <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 mb-3">
+                          <div className="text-[10px] font-medium text-purple-600 uppercase tracking-wide">Special Requests / Access</div>
+                          <p className="text-sm text-purple-800 mt-1">{selectedLead.specialRequests}</p>
+                        </div>
+                      )}
+
+                      {/* Freeform notes (anything that wasn't parsed as structured) */}
+                      {parsed.freeformNotes && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-3">
+                          <div className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Notes</div>
+                          <p className="text-sm text-amber-800 mt-1 whitespace-pre-wrap">{parsed.freeformNotes}</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <div className="flex gap-2 pt-3 border-t border-gray-100">
                   <button
                     onClick={() => router.push(`/proposals/new?leadId=${selectedLead.id}`)}

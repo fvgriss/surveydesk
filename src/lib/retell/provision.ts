@@ -58,10 +58,30 @@ function getCreateLeadTool(appUrl: string) {
           type: "string",
           description: "Urgency: high, medium, or low",
         },
-        notes: { type: "string", description: "Additional context from the call" },
+        timeline: {
+          type: "string",
+          description: "When they need it: e.g. 'ASAP', 'within 2 weeks', 'closing on March 15', 'no rush'",
+        },
+        property_owner: {
+          type: "string",
+          description: "Name of the property owner if different from the caller",
+        },
+        referral_type: {
+          type: "string",
+          description: "Who the caller is: homeowner, title_company, realtor, attorney, contractor, lender, or other",
+        },
+        reason: {
+          type: "string",
+          description: "Why they need the survey: buying, selling, closing, construction, dispute, flood_insurance, subdivision, or other",
+        },
+        lot_size: {
+          type: "string",
+          description: "Approximate lot or acreage size if mentioned",
+        },
+        notes: { type: "string", description: "Any other additional context from the call" },
         special_requests: {
           type: "string",
-          description: "Any special requirements",
+          description: "Any special requirements or access instructions",
         },
       },
       required: ["property_address", "caller_name"],

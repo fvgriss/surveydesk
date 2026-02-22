@@ -78,6 +78,11 @@ async function createLead(
     property_address?: string;
     survey_type?: string;
     urgency?: string;
+    timeline?: string;
+    property_owner?: string;
+    referral_type?: string;
+    reason?: string;
+    lot_size?: string;
     notes?: string;
     special_requests?: string;
   },
@@ -106,6 +111,17 @@ async function createLead(
       }
     }
 
+    // Map referral_type to contact type
+    const contactTypeMap: Record<string, string> = {
+      homeowner: "homeowner",
+      title_company: "title_company",
+      realtor: "realtor",
+      attorney: "attorney",
+      contractor: "contractor",
+      lender: "lender",
+    };
+    const contactType = contactTypeMap[args.referral_type || ""] || "homeowner";
+
     // Create a new contact if we don't have a match
     if (!contactId && (args.caller_name || callerPhone)) {
       const nameParts = (args.caller_name || "Unknown Caller").split(" ");
@@ -116,7 +132,7 @@ async function createLead(
         .insert(contacts)
         .values({
           tenantId,
-          type: "homeowner",
+          type: contactType as any,
           firstName,
           lastName,
           companyName: args.company_name || null,
@@ -144,6 +160,17 @@ async function createLead(
       ? args.urgency!
       : "medium";
 
+    // Build structured notes with all the extra details
+    const noteParts: string[] = [];
+    if (args.timeline) noteParts.push(`TIMELINE: ${args.timeline}`);
+    if (args.reason) noteParts.push(`REASON: ${args.reason}`);
+    if (args.property_owner) noteParts.push(`PROPERTY OWNER: ${args.property_owner}`);
+    if (args.referral_type) noteParts.push(`CALLER TYPE: ${args.referral_type.replace("_", " ")}`);
+    if (args.lot_size) noteParts.push(`LOT SIZE: ${args.lot_size}`);
+    if (args.notes) noteParts.push(`NOTES: ${args.notes}`);
+
+    const structuredNotes = noteParts.length > 0 ? noteParts.join("\n") : null;
+
     // Create the lead
     const [newLead] = await db
       .insert(leads)
@@ -157,8 +184,8 @@ async function createLead(
         urgency: urgency as any,
         callerEmail: args.caller_email || null,
         callerPhone: callerPhone || null,
-        specialRequests: args.special_requests || args.notes || null,
-        notes: args.notes || null,
+        specialRequests: args.special_requests || null,
+        notes: structuredNotes,
       })
       .returning();
 
