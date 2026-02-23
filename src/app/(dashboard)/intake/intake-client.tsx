@@ -18,6 +18,7 @@ import {
   Mail,
   ChevronDown,
   ChevronUp,
+  Check,
 } from "lucide-react";
 
 type Call = {
@@ -105,6 +106,84 @@ function Badge({ children, className }: { children: React.ReactNode; className?:
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className || "bg-gray-50 text-gray-600 border-gray-200"}`}>{children}</span>;
 }
 
+const LEAD_STATUS_OPTIONS = [
+  { value: "new", label: "New" },
+  { value: "qualifying", label: "Qualifying" },
+  { value: "proposal_sent", label: "Proposal Sent" },
+  { value: "won", label: "Won" },
+  { value: "lost", label: "Lost" },
+  { value: "expired", label: "Expired" },
+];
+
+function StatusDropdown({
+  leadId,
+  currentStatus,
+  onStatusChange,
+}: {
+  leadId: string;
+  currentStatus: string;
+  onStatusChange: (newStatus: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSelect(status: string) {
+    if (status === currentStatus) {
+      setOpen(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        onStatusChange(status);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false);
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        disabled={saving}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-gray-300 transition-all ${statusColor[currentStatus] || "bg-gray-50 text-gray-600 border-gray-200"} ${saving ? "opacity-50" : ""}`}
+      >
+        {currentStatus.replace("_", " ")}
+        <ChevronDown size={10} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px]">
+            {LEAD_STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleSelect(opt.value)}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center justify-between gap-2"
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${(statusColor[opt.value] || "bg-gray-200").split(" ")[0]}`} />
+                  {opt.label}
+                </span>
+                {opt.value === currentStatus && <Check size={12} className="text-gray-500" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function formatDuration(seconds: number | null) {
   if (!seconds) return "0:00";
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
@@ -124,16 +203,29 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] }) {
+export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; leads: Lead[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<"calls" | "leads">("calls");
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [syncingEmail, setSyncingEmail] = useState(false);
   const [emailSyncResult, setEmailSyncResult] = useState<string | null>(null);
   const [transcriptExpanded, setTranscriptExpanded] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filteredLeads = statusFilter === "all" ? leads : leads.filter((l) => l.status === statusFilter);
+
+  function handleLeadStatusChange(leadId: string, newStatus: string) {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l))
+    );
+    if (selectedLead?.id === leadId) {
+      setSelectedLead((prev) => prev ? { ...prev, status: newStatus } : prev);
+    }
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -322,9 +414,32 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
       )}
 
       {tab === "leads" && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            {[{ value: "all", label: "All" }, ...LEAD_STATUS_OPTIONS].map((opt) => {
+              const count = opt.value === "all" ? leads.length : leads.filter((l) => l.status === opt.value).length;
+              if (opt.value !== "all" && count === 0) return null;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    statusFilter === opt.value
+                      ? opt.value === "all"
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : statusColor[opt.value] || "bg-gray-100 text-gray-700 border-gray-300"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {opt.label}
+                  <span className="ml-1 text-[10px] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         <div className="grid grid-cols-5 gap-4">
           <div className="col-span-2 space-y-1">
-            {leads.map((lead) => (
+            {filteredLeads.map((lead) => (
               <div key={lead.id} onClick={() => setSelectedLead(lead)}
                 className={`bg-white rounded-xl border shadow-sm p-3 cursor-pointer transition-all ${selectedLead?.id === lead.id ? "ring-2 ring-blue-500 border-blue-300" : "border-gray-200 hover:border-gray-300 hover:shadow"}`}>
                 <div className="flex items-start justify-between mb-1">
@@ -350,6 +465,11 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                 </div>
               </div>
             ))}
+            {filteredLeads.length === 0 && (
+              <div className="text-center py-12 text-gray-400 text-sm">
+                {statusFilter === "all" ? "No leads yet" : `No ${statusFilter.replace("_", " ")} leads`}
+              </div>
+            )}
           </div>
           <div className="col-span-3">
             {selectedLead ? (
@@ -379,7 +499,11 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Badge className={urgencyColor[selectedLead.urgency] || ""}>{selectedLead.urgency}</Badge>
-                    <Badge className={statusColor[selectedLead.status] || ""}>{selectedLead.status.replace("_", " ")}</Badge>
+                    <StatusDropdown
+                      leadId={selectedLead.id}
+                      currentStatus={selectedLead.status}
+                      onStatusChange={(s) => handleLeadStatusChange(selectedLead.id, s)}
+                    />
                   </div>
                 </div>
                 {(() => {
@@ -466,6 +590,7 @@ export function IntakeClient({ calls, leads }: { calls: Call[]; leads: Lead[] })
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
     </div>
