@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { tenants, crews, integrations, users } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { SettingsClient } from "./settings-client";
 
@@ -56,6 +56,22 @@ export default async function SettingsPage() {
     .where(eq(crews.tenantId, tenant.tenantId))
     .orderBy(desc(crews.createdAt));
 
+  const teamMembers = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      fullName: users.fullName,
+      phone: users.phone,
+      role: users.role,
+      isActive: users.isActive,
+      emailNotifications: users.emailNotifications,
+      smsNotifications: users.smsNotifications,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.tenantId, tenant.tenantId))
+    .orderBy(asc(users.createdAt));
+
   return (
     <SettingsClient
       firm={{
@@ -67,6 +83,11 @@ export default async function SettingsPage() {
         ...c,
         createdAt: c.createdAt.toISOString(),
       }))}
+      teamMembers={teamMembers.map((m) => ({
+        ...m,
+        createdAt: m.createdAt.toISOString(),
+      }))}
+      userRole={tenant.role}
       gmail={
         gmailIntegration
           ? {

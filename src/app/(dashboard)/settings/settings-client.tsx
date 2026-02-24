@@ -18,6 +18,7 @@ import {
   Unlink,
   Phone,
   Bell,
+  UserPlus,
 } from "lucide-react";
 
 type Firm = {
@@ -50,6 +51,18 @@ type Crew = {
   createdAt: string;
 };
 
+type TeamMember = {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string | null;
+  role: string;
+  isActive: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  createdAt: string;
+};
+
 const SURVEY_TYPES = [
   { value: "boundary", label: "Boundary" },
   { value: "alta", label: "ALTA/NSPS" },
@@ -70,7 +83,7 @@ type GmailStatus = {
 
 const TABS = [
   { id: "firm", label: "Firm Profile", icon: Building2 },
-  { id: "crews", label: "Crews", icon: Users },
+  { id: "team", label: "Team", icon: Users },
   { id: "defaults", label: "Defaults & Templates", icon: FileText },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "integrations", label: "Integrations", icon: Link },
@@ -84,6 +97,8 @@ type NotificationPrefs = {
 export function SettingsClient({
   firm,
   crews: initialCrews,
+  teamMembers: initialMembers,
+  userRole,
   gmail,
   retellPhone,
   subscriptionStatus,
@@ -91,6 +106,8 @@ export function SettingsClient({
 }: {
   firm: Firm;
   crews: Crew[];
+  teamMembers: TeamMember[];
+  userRole: string;
   gmail: GmailStatus;
   retellPhone: string | null;
   subscriptionStatus: string;
@@ -127,8 +144,8 @@ export function SettingsClient({
       </div>
 
       {activeTab === "firm" && <FirmProfileTab firm={firm} />}
-      {activeTab === "crews" && (
-        <CrewsTab crews={initialCrews} />
+      {activeTab === "team" && (
+        <TeamTab members={initialMembers} crews={initialCrews} userRole={userRole} />
       )}
       {activeTab === "defaults" && <DefaultsTab firm={firm} />}
       {activeTab === "notifications" && <NotificationsTab prefs={notificationPrefs} />}
@@ -336,9 +353,346 @@ function FirmProfileTab({ firm }: { firm: Firm }) {
   );
 }
 
-// ─── Crews Tab ──────────────────────────────────────────────────
+// ─── Team Tab ───────────────────────────────────────────────────
 
-function CrewsTab({
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  office_manager: "Office Manager",
+  crew_chief: "Crew Chief",
+  instrument_person: "Instrument Person",
+};
+
+const ROLE_BADGE: Record<string, string> = {
+  owner: "bg-blue-50 text-blue-700",
+  office_manager: "bg-purple-50 text-purple-700",
+  crew_chief: "bg-emerald-50 text-emerald-700",
+  instrument_person: "bg-amber-50 text-amber-700",
+};
+
+function TeamTab({
+  members,
+  crews,
+  userRole,
+}: {
+  members: TeamMember[];
+  crews: Crew[];
+  userRole: string;
+}) {
+  return (
+    <div className="space-y-8">
+      <MembersSection members={members} userRole={userRole} />
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Crews</h2>
+        <CrewsSection crews={crews} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Members Section ────────────────────────────────────────────
+
+function MembersSection({
+  members,
+  userRole,
+}: {
+  members: TeamMember[];
+  userRole: string;
+}) {
+  const router = useRouter();
+  const isOwner = userRole === "owner";
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("instrument_person");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState("");
+
+  async function handleInvite() {
+    if (!inviteName.trim() || !inviteEmail.trim() || !inviteRole) return;
+    setInviting(true);
+    setInviteError(null);
+    try {
+      const res = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: inviteName.trim(),
+          email: inviteEmail.trim().toLowerCase(),
+          role: inviteRole,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to invite");
+      }
+      setShowInvite(false);
+      setInviteName("");
+      setInviteEmail("");
+      setInviteRole("instrument_person");
+      router.refresh();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  function startEdit(member: TeamMember) {
+    setEditingId(member.id);
+    setEditName(member.fullName);
+    setEditPhone(member.phone || "");
+    setEditRole(member.role);
+  }
+
+  async function handleSaveEdit(id: string) {
+    const res = await fetch(`/api/team/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: editName.trim(),
+        phone: editPhone.trim() || null,
+        role: editRole,
+      }),
+    });
+    if (res.ok) {
+      setEditingId(null);
+      router.refresh();
+    }
+  }
+
+  async function handleToggleNotifications(member: TeamMember) {
+    await fetch(`/api/team/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emailNotifications: !member.emailNotifications,
+        smsNotifications: !member.smsNotifications,
+      }),
+    });
+    router.refresh();
+  }
+
+  async function handleToggleActive(member: TeamMember) {
+    await fetch(`/api/team/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !member.isActive }),
+    });
+    router.refresh();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Remove this team member? This will delete their account.")) return;
+    await fetch(`/api/team/${id}`, { method: "DELETE" });
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Members</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{members.length} team member{members.length !== 1 ? "s" : ""}</p>
+        </div>
+        {isOwner && (
+          <button
+            onClick={() => setShowInvite(true)}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+          >
+            <UserPlus size={14} />
+            Invite Member
+          </button>
+        )}
+      </div>
+
+      {/* Invite form */}
+      {showInvite && (
+        <div className="bg-white border border-blue-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Invite Team Member</h3>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="e.g. Jane Smith"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="jane@example.com"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="office_manager">Office Manager</option>
+                <option value="crew_chief">Crew Chief</option>
+                <option value="instrument_person">Instrument Person</option>
+              </select>
+            </div>
+            {inviteError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{inviteError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setShowInvite(false); setInviteName(""); setInviteEmail(""); setInviteRole("instrument_person"); setInviteError(null); }}
+                className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInvite}
+                disabled={!inviteName.trim() || !inviteEmail.trim() || inviting}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {inviting ? "Sending Invite..." : "Send Invite"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Member list */}
+      <div className="space-y-2">
+        {members.map((member) => {
+          const isEditing = editingId === member.id;
+          const isSelf = member.role === "owner";
+
+          return (
+            <div
+              key={member.id}
+              className={`bg-white border rounded-xl px-4 py-3 ${
+                member.isActive ? "border-gray-100" : "border-gray-100 opacity-60"
+              }`}
+            >
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        disabled={member.role === "owner"}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50"
+                      >
+                        {member.role === "owner" && <option value="owner">Owner</option>}
+                        <option value="office_manager">Office Manager</option>
+                        <option value="crew_chief">Crew Chief</option>
+                        <option value="instrument_person">Instrument Person</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button onClick={() => handleSaveEdit(member.id)} className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{member.fullName}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ROLE_BADGE[member.role] || "bg-gray-100 text-gray-600"}`}>
+                        {ROLE_LABEL[member.role] || member.role}
+                      </span>
+                      {!member.isActive && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">Inactive</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{member.email}{member.phone ? ` · ${member.phone}` : ""}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {isOwner && (
+                      <button
+                        onClick={() => handleToggleNotifications(member)}
+                        title={member.emailNotifications ? "Receiving lead notifications" : "Not receiving lead notifications"}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          member.emailNotifications
+                            ? "text-blue-500 hover:bg-blue-50"
+                            : "text-gray-300 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Bell size={13} />
+                      </button>
+                    )}
+                    {isOwner && !isSelf && (
+                      <>
+                      <button
+                        onClick={() => handleToggleActive(member)}
+                        className={`px-2 py-1 text-[11px] font-medium rounded-lg transition-colors ${
+                          member.isActive
+                            ? "text-amber-600 hover:bg-amber-50"
+                            : "text-emerald-600 hover:bg-emerald-50"
+                        }`}
+                      >
+                        {member.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => startEdit(member)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Crews Section ──────────────────────────────────────────────
+
+function CrewsSection({
   crews,
 }: {
   crews: Crew[];

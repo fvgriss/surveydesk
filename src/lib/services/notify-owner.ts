@@ -23,7 +23,7 @@ interface NewLeadData {
 }
 
 /**
- * Notify the tenant owner (via email and/or SMS) when a new lead is created.
+ * Notify all active team members (via email and/or SMS) when a new lead is created.
  * Non-blocking — errors are logged but never thrown.
  */
 export async function notifyOwnerNewLead(
@@ -31,8 +31,8 @@ export async function notifyOwnerNewLead(
   lead: NewLeadData
 ): Promise<void> {
   try {
-    // Get the owner user
-    const [owner] = await db
+    // Get all active users who may want notifications
+    const notifyUsers = await db
       .select({
         email: users.email,
         phone: users.phone,
@@ -41,10 +41,14 @@ export async function notifyOwnerNewLead(
         smsNotifications: users.smsNotifications,
       })
       .from(users)
-      .where(and(eq(users.tenantId, tenantId), eq(users.role, "owner")))
-      .limit(1);
+      .where(
+        and(
+          eq(users.tenantId, tenantId),
+          eq(users.isActive, true)
+        )
+      );
 
-    if (!owner) return;
+    if (notifyUsers.length === 0) return;
 
     // Get firm name for branding
     const [tenant] = await db
@@ -60,41 +64,45 @@ export async function notifyOwnerNewLead(
     const urgencyLabel = lead.urgency ? ` (${lead.urgency} urgency)` : "";
     const sourceLabel = lead.source === "email" ? " via email" : " via phone";
 
-    // Send email notification
-    if (owner.emailNotifications && owner.email && process.env.RESEND_API_KEY) {
-      try {
-        await resend.emails.send({
-          from: "SurveyOS <onboarding@resend.dev>",
-          to: owner.email,
-          subject: `New lead: ${surveyLabel} survey at ${address}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 480px;">
-              <p>Hi ${owner.fullName?.split(" ")[0] || "there"},</p>
-              <p>A new lead just came in${sourceLabel}:</p>
-              <table style="border-collapse: collapse; margin: 16px 0;">
-                <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Contact</td><td style="padding: 4px 0; font-size: 14px;">${name}</td></tr>
-                <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
-                <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${address}</td></tr>
-                ${lead.urgency ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Urgency</td><td style="padding: 4px 0; font-size: 14px;">${lead.urgency}</td></tr>` : ""}
-              </table>
-              <p style="margin-top: 16px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app"}/intake" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View in Dashboard</a>
-              </p>
-              <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
-            </div>
-          `,
-        });
-      } catch (emailErr) {
-        console.warn("[notify-owner] Email failed:", emailErr);
-      }
-    }
-
-    // Send SMS notification
-    if (owner.smsNotifications && owner.phone) {
-      const tw = getTwilioClient();
-      if (tw) {
+    // Send email notifications in parallel
+    const emailPromises = notifyUsers
+      .filter((u) => u.emailNotifications && u.email && process.env.RESEND_API_KEY)
+      .map(async (user) => {
         try {
-          const digits = owner.phone.replace(/\D/g, "");
+          await resend.emails.send({
+            from: "SurveyOS <onboarding@resend.dev>",
+            to: user.email,
+            subject: `New lead: ${surveyLabel} survey at ${address}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 480px;">
+                <p>Hi ${user.fullName?.split(" ")[0] || "there"},</p>
+                <p>A new lead just came in${sourceLabel}:</p>
+                <table style="border-collapse: collapse; margin: 16px 0;">
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Contact</td><td style="padding: 4px 0; font-size: 14px;">${name}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
+                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${address}</td></tr>
+                  ${lead.urgency ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Urgency</td><td style="padding: 4px 0; font-size: 14px;">${lead.urgency}</td></tr>` : ""}
+                </table>
+                <p style="margin-top: 16px;">
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app"}/intake" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View in Dashboard</a>
+                </p>
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
+              </div>
+            `,
+          });
+        } catch (emailErr) {
+          console.warn(`[notify-team] Email to ${user.email} failed:`, emailErr);
+        }
+      });
+
+    // Send SMS notifications in parallel
+    const smsPromises = notifyUsers
+      .filter((u) => u.smsNotifications && u.phone)
+      .map(async (user) => {
+        const tw = getTwilioClient();
+        if (!tw) return;
+        try {
+          const digits = user.phone!.replace(/\D/g, "");
           const to = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
 
           await tw.client.messages.create({
@@ -103,11 +111,12 @@ export async function notifyOwnerNewLead(
             from: tw.from,
           });
         } catch (smsErr) {
-          console.warn("[notify-owner] SMS failed:", smsErr);
+          console.warn(`[notify-team] SMS to ${user.phone} failed:`, smsErr);
         }
-      }
-    }
+      });
+
+    await Promise.allSettled([...emailPromises, ...smsPromises]);
   } catch (err) {
-    console.warn("[notify-owner] Notification failed (non-blocking):", err);
+    console.warn("[notify-team] Notification failed (non-blocking):", err);
   }
 }
