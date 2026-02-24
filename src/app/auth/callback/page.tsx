@@ -37,6 +37,12 @@ function AuthCallbackInner() {
             refresh_token: refreshToken,
           });
           if (!error) {
+            const type = params.get("type");
+            // Recovery/invite flow → set password first
+            if (type === "recovery") {
+              router.push("/auth/set-password");
+              return;
+            }
             router.push(next);
             return;
           }

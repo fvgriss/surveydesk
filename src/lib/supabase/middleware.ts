@@ -76,6 +76,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/subscription") ||
     request.nextUrl.pathname.startsWith("/onboarding") ||
     request.nextUrl.pathname.startsWith("/welcome") ||
+    request.nextUrl.pathname.startsWith("/auth/") ||
     request.nextUrl.pathname.startsWith("/api/") ||
     request.nextUrl.pathname.startsWith("/admin") ||
     request.nextUrl.pathname.startsWith("/setup-forwarding");
