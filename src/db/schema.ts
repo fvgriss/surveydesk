@@ -489,12 +489,12 @@ export const projects = pgTable(
     totalPaid: numeric("total_paid", { precision: 10, scale: 2 })
       .notNull()
       .default("0"),
-    // Documents (array of { name: string, url: string, type: string, uploadedAt: string })
+    // Documents (array of { name, storagePath, type, uploadedAt })
     documents: jsonb("documents")
       .$type<
         Array<{
           name: string;
-          url: string;
+          storagePath: string;
           type: string;
           uploadedAt: string;
         }>

@@ -9,9 +9,9 @@ const BUCKET = "project-documents";
 
 type DocEntry = {
   name: string;
+  storagePath: string;
   type: string;
   uploadedAt: string;
-  storagePath: string;
 };
 
 // GET /api/projects/[id]/documents?index=0 — generate a signed download URL
@@ -36,7 +36,7 @@ export async function GET(
     if (!project)
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-    const docs = (project.documents || []) as unknown as DocEntry[];
+    const docs = project.documents || [];
     if (index < 0 || index >= docs.length)
       return NextResponse.json({ error: "Invalid index" }, { status: 400 });
 
@@ -102,7 +102,7 @@ export async function POST(
       storagePath: filePath,
     };
 
-    const currentDocs = (project.documents || []) as unknown as DocEntry[];
+    const currentDocs = project.documents || [];
 
     const [updated] = await db
       .update(projects)
@@ -142,7 +142,7 @@ export async function DELETE(
     if (!project)
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-    const currentDocs = (project.documents || []) as unknown as DocEntry[];
+    const currentDocs = project.documents || [];
     if (index < 0 || index >= currentDocs.length)
       return NextResponse.json({ error: "Invalid index" }, { status: 400 });
 
