@@ -8,6 +8,7 @@ import { BillingClient } from "./billing-client";
 export default async function BillingPage() {
   const tenant = await getCurrentTenant();
   if (!tenant) redirect("/login");
+  if (["crew_chief", "instrument_person"].includes(tenant.role)) redirect("/schedule");
   const tid = tenant.tenantId;
 
   const rows = await db

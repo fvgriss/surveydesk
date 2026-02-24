@@ -116,17 +116,22 @@ function fmtDate(dateStr: string) {
   });
 }
 
+const FIELD_ROLES = ["crew_chief", "instrument_person"];
+
 export function ProjectDetailClient({
   project: initialProject,
   contact,
   invoices,
   visits,
+  role = "owner",
 }: {
   project: ProjectData;
   contact: ContactData;
   invoices: InvoiceData[];
   visits: VisitData[];
+  role?: string;
 }) {
+  const isFieldRole = FIELD_ROLES.includes(role);
   const router = useRouter();
   const [project, setProject] = useState(initialProject);
   const [notes, setNotes] = useState(project.notes || "");
@@ -259,19 +264,27 @@ export function ProjectDetailClient({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={project.status}
-            onChange={(e) => updateStatus(e.target.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${
+          {isFieldRole ? (
+            <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
               STATUS_COLORS[project.status] || "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            }`}>
+              {STATUS_OPTIONS.find((o) => o.value === project.status)?.label || project.status}
+            </span>
+          ) : (
+            <select
+              value={project.status}
+              onChange={(e) => updateStatus(e.target.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${
+                STATUS_COLORS[project.status] || "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -415,17 +428,19 @@ export function ProjectDetailClient({
                 <FileText size={14} className="text-gray-400" />
                 Documents
               </h2>
-              <label className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-                <Upload size={12} />
-                {uploading ? "Uploading..." : "Upload"}
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={handleDocumentUpload}
-                  disabled={uploading}
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf,.tif,.tiff,.csv"
-                />
-              </label>
+              {!isFieldRole && (
+                <label className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                  <Upload size={12} />
+                  {uploading ? "Uploading..." : "Upload"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleDocumentUpload}
+                    disabled={uploading}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf,.tif,.tiff,.csv"
+                  />
+                </label>
+              )}
             </div>
             {documents.length === 0 ? (
               <p className="text-sm text-gray-400">No documents uploaded yet.</p>
@@ -452,13 +467,15 @@ export function ProjectDetailClient({
                       >
                         <Download size={14} />
                       </button>
-                      <button
-                        onClick={() => handleDocumentDelete(idx)}
-                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {!isFieldRole && (
+                        <button
+                          onClick={() => handleDocumentDelete(idx)}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -473,13 +490,15 @@ export function ProjectDetailClient({
                 <FileText size={14} className="text-gray-400" />
                 Invoices
               </h2>
-              <button
-                onClick={() => setShowInvoiceForm(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <Plus size={12} />
-                Create Invoice
-              </button>
+              {!isFieldRole && (
+                <button
+                  onClick={() => setShowInvoiceForm(true)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Plus size={12} />
+                  Create Invoice
+                </button>
+              )}
             </div>
             {invoices.length === 0 ? (
               <p className="text-sm text-gray-400">
@@ -535,7 +554,7 @@ export function ProjectDetailClient({
                         >
                           <Download size={14} />
                         </a>
-                        {["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
+                        {!isFieldRole && ["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
                           <button
                             onClick={() => setPaymentInvoice(inv)}
                             className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
@@ -558,19 +577,24 @@ export function ProjectDetailClient({
             </h2>
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add project notes..."
+              onChange={(e) => !isFieldRole && setNotes(e.target.value)}
+              readOnly={isFieldRole}
+              placeholder={isFieldRole ? "No notes." : "Add project notes..."}
               rows={4}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none ${
+                isFieldRole ? "bg-gray-50 text-gray-500" : "focus:outline-none focus:ring-2 focus:ring-blue-500"
+              }`}
             />
-            <button
-              onClick={saveNotes}
-              disabled={saving}
-              className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-            >
-              <Save size={12} />
-              {saving ? "Saving..." : "Save Notes"}
-            </button>
+            {!isFieldRole && (
+              <button
+                onClick={saveNotes}
+                disabled={saving}
+                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                <Save size={12} />
+                {saving ? "Saving..." : "Save Notes"}
+              </button>
+            )}
           </div>
         </div>
 

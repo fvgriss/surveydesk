@@ -1,13 +1,14 @@
 import { db } from "@/db";
-import { fieldVisits, projects, contacts, crews } from "@/db/schema";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { fieldVisits, projects, contacts, crews, crewMembers } from "@/db/schema";
+import { eq, and, gte, lte, inArray, or } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { redirect } from "next/navigation";
 import { ScheduleClient } from "./schedule-client";
 
 export const dynamic = "force-dynamic";
 
-type ViewMode = "week" | "month" | "map";
+const FIELD_ROLES = ["crew_chief", "instrument_person"];
+type ViewMode = "week" | "month" | "map" | "today";
 
 export default async function SchedulePage({
   searchParams,
@@ -17,9 +18,12 @@ export default async function SchedulePage({
   const tenant = await getCurrentTenant();
   if (!tenant) redirect("/login");
   const tid = tenant.tenantId;
+  const isFieldRole = FIELD_ROLES.includes(tenant.role);
 
   const params = await searchParams;
-  const view = (["week", "month", "map"].includes(params.view || "") ? params.view : "week") as ViewMode;
+  const defaultView = isFieldRole ? "today" : "week";
+  const validViews = isFieldRole ? ["today"] : ["week", "month", "map", "today"];
+  const view = (validViews.includes(params.view || "") ? params.view : defaultView) as ViewMode;
   const refDate = params.date ? new Date(params.date + "T12:00:00") : new Date();
 
   // Compute date range based on view
@@ -54,6 +58,29 @@ export default async function SchedulePage({
     }
   }
 
+  // For field roles, find which crew(s) this user belongs to
+  let userCrewIds: string[] = [];
+  if (isFieldRole) {
+    // Check crews where user is crew chief
+    const chiefCrews = await db
+      .select({ id: crews.id })
+      .from(crews)
+      .where(and(eq(crews.tenantId, tid), eq(crews.crewChiefId, tenant.userId)));
+
+    // Check crew_members table
+    const memberCrews = await db
+      .select({ crewId: crewMembers.crewId })
+      .from(crewMembers)
+      .where(eq(crewMembers.userId, tenant.userId));
+
+    userCrewIds = [
+      ...new Set([
+        ...chiefCrews.map((c) => c.id),
+        ...memberCrews.map((c) => c.crewId),
+      ]),
+    ];
+  }
+
   // Shared select columns for visit queries (use fieldVisits.crewId since crewId can be null)
   const visitSelect = {
     id: fieldVisits.id,
@@ -75,6 +102,13 @@ export default async function SchedulePage({
     actualDeparture: fieldVisits.actualDeparture,
   };
 
+  // Build crew filter for field roles
+  const crewFilter = isFieldRole && userCrewIds.length > 0
+    ? inArray(fieldVisits.crewId, userCrewIds)
+    : isFieldRole
+      ? eq(fieldVisits.crewId, "00000000-0000-0000-0000-000000000000") // no crews → no results
+      : undefined;
+
   // Query scheduled visits (real dates only, exclude sentinel 1970-01-01)
   // leftJoin crews since crewId can be null
   const visits = await db
@@ -87,14 +121,16 @@ export default async function SchedulePage({
       and(
         eq(fieldVisits.tenantId, tid),
         gte(fieldVisits.scheduledDate, startDate),
-        lte(fieldVisits.scheduledDate, endDate)
+        lte(fieldVisits.scheduledDate, endDate),
+        crewFilter
       )
     )
     .orderBy(fieldVisits.scheduledDate);
 
   // Query unscheduled visits (sentinel date 1970-01-01 = "schedule later")
   // Use leftJoin for crews since crewId can be null on unscheduled visits
-  const unscheduledVisitRows = await db
+  // Field roles don't see unscheduled visits
+  const unscheduledVisitRows = isFieldRole ? [] : await db
     .select(visitSelect)
     .from(fieldVisits)
     .innerJoin(projects, eq(fieldVisits.projectId, projects.id))
@@ -112,9 +148,9 @@ export default async function SchedulePage({
     .from(crews)
     .where(eq(crews.tenantId, tid));
 
-  // Query unscheduled projects (active projects with no field visits)
+  // Query unscheduled projects (admin only — field roles don't manage scheduling)
   // First get project IDs that DO have visits
-  const projectsWithVisits = await db
+  const projectsWithVisits = isFieldRole ? [] : await db
     .select({ projectId: fieldVisits.projectId })
     .from(fieldVisits)
     .where(eq(fieldVisits.tenantId, tid))
@@ -133,7 +169,7 @@ export default async function SchedulePage({
     createdAt: Date;
   }[] = [];
 
-  const allActiveProjects = await db
+  const allActiveProjects = isFieldRole ? [] : await db
     .select({
       id: projects.id,
       propertyAddress: projects.propertyAddress,
@@ -198,6 +234,7 @@ export default async function SchedulePage({
       unscheduledProjects={unscheduledProjects}
       initialView={view}
       currentDate={currentDate}
+      role={tenant.role}
     />
   );
 }

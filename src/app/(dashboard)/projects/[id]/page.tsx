@@ -145,6 +145,7 @@ export default async function ProjectDetailPage({
           actualArrival: v.actualArrival?.toISOString() || null,
           actualDeparture: v.actualDeparture?.toISOString() || null,
         }))}
+      role={tenant.role}
     />
   );
 }

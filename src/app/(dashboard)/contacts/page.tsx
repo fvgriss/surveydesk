@@ -8,6 +8,7 @@ import { ContactsClient } from "./contacts-client";
 export default async function ContactsPage() {
   const tenant = await getCurrentTenant();
   if (!tenant) redirect("/login");
+  if (["crew_chief", "instrument_person"].includes(tenant.role)) redirect("/schedule");
 
   // Fetch all contacts with project counts
   const contactRows = await db

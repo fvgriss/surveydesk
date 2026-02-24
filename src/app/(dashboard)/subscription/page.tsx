@@ -10,6 +10,7 @@ import { SubscriptionClient } from "./subscription-client";
 export default async function SubscriptionPage() {
   const auth = await getCurrentTenant();
   if (!auth) redirect("/login");
+  if (auth.role !== "owner") redirect("/schedule");
 
   const [tenant] = await db
     .select({

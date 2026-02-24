@@ -70,6 +70,7 @@ export default async function DashboardLayout({
       firmName={firmName}
       retellPhoneNumber={retellPhoneNumber}
       isImpersonating={isImpersonating}
+      role={auth?.role || "owner"}
     >
       {children}
     </DashboardShell>

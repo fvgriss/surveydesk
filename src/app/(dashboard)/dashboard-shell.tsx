@@ -22,16 +22,18 @@ import {
   CreditCard,
 } from "lucide-react";
 
+const ADMIN_ROLES = ["owner", "office_manager"];
+
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/intake", label: "Intake", icon: Phone },
-  { href: "/proposals", label: "Proposals", icon: FileText },
-  { href: "/projects", label: "Projects", icon: FolderOpen },
-  { href: "/schedule", label: "Schedule", icon: Calendar },
-  { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "/billing", label: "Billing", icon: DollarSign },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/subscription", label: "Subscription", icon: CreditCard },
+  { href: "/dashboard", label: "Dashboard", icon: Home, roles: ADMIN_ROLES },
+  { href: "/intake", label: "Intake", icon: Phone, roles: ADMIN_ROLES },
+  { href: "/proposals", label: "Proposals", icon: FileText, roles: ADMIN_ROLES },
+  { href: "/projects", label: "Projects", icon: FolderOpen, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
+  { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
+  { href: "/contacts", label: "Contacts", icon: Users, roles: ADMIN_ROLES },
+  { href: "/billing", label: "Billing", icon: DollarSign, roles: ADMIN_ROLES },
+  { href: "/settings", label: "Settings", icon: Settings, roles: ADMIN_ROLES },
+  { href: "/subscription", label: "Subscription", icon: CreditCard, roles: ["owner"] },
 ];
 
 function formatPhone(phone: string): string {
@@ -51,12 +53,14 @@ export function DashboardShell({
   firmName,
   retellPhoneNumber,
   isImpersonating,
+  role = "owner",
 }: {
   user: User;
   children: React.ReactNode;
   firmName?: string | null;
   isImpersonating?: boolean;
   retellPhoneNumber?: string | null;
+  role?: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
@@ -119,7 +123,7 @@ export function DashboardShell({
           )}
         </div>
         <nav className="flex-1 py-3 px-2 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

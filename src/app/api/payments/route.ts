@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     const tenant = await getCurrentTenant();
     if (!tenant)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!["owner", "office_manager"].includes(tenant.role))
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json();
     const { invoiceId, amount, method, receivedAt, checkNumber, notes } = body as {

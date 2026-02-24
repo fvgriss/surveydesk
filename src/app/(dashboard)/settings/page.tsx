@@ -8,6 +8,7 @@ import { SettingsClient } from "./settings-client";
 export default async function SettingsPage() {
   const tenant = await getCurrentTenant();
   if (!tenant) redirect("/login");
+  if (["crew_chief", "instrument_person"].includes(tenant.role)) redirect("/schedule");
 
   const [firm] = await db
     .select()

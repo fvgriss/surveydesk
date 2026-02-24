@@ -20,6 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const tenant = await getCurrentTenant();
   if (!tenant) redirect("/login");
+  if (["crew_chief", "instrument_person"].includes(tenant.role)) redirect("/schedule");
   const tid = tenant.tenantId;
 
   const today = new Date().toISOString().split("T")[0];

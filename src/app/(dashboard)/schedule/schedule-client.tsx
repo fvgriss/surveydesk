@@ -32,6 +32,7 @@ type ScheduleClientProps = {
   unscheduledProjects: UnscheduledProject[];
   initialView: ViewMode;
   currentDate: string; // YYYY-MM-DD reference date
+  role?: string;
 };
 
 function getWeekLabel(days: string[]) {
@@ -46,7 +47,10 @@ function getMonthLabel(dateStr: string) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export function ScheduleClient({ days, crews, visits: initialVisits, unscheduledVisits, unscheduledProjects, initialView, currentDate }: ScheduleClientProps) {
+const FIELD_ROLES = ["crew_chief", "instrument_person"];
+
+export function ScheduleClient({ days, crews, visits: initialVisits, unscheduledVisits, unscheduledProjects, initialView, currentDate, role = "owner" }: ScheduleClientProps) {
+  const isFieldRole = FIELD_ROLES.includes(role);
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
@@ -284,86 +288,90 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
               <span className="w-2.5 h-0.5 bg-amber-400 rounded" /> Tentative
             </span>
           </div>
-          <button
-            onClick={() => setShowAddVisit(true)}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            Add Visit
-          </button>
+          {!isFieldRole && (
+            <button
+              onClick={() => setShowAddVisit(true)}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Add Visit
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Navigation + View Toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={goPrev}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span className="text-sm font-semibold text-gray-900 min-w-[180px] text-center">{navLabel}</span>
-          <button
-            onClick={goNext}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-          >
-            <ChevronRight size={18} />
-          </button>
-          <button
-            onClick={goToday}
-            className="ml-2 px-3 py-1 rounded-lg text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            Today
-          </button>
-        </div>
+      {/* Navigation + View Toggle (admin only) */}
+      {!isFieldRole && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={goPrev}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-sm font-semibold text-gray-900 min-w-[180px] text-center">{navLabel}</span>
+            <button
+              onClick={goNext}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <button
+              onClick={goToday}
+              className="ml-2 px-3 py-1 rounded-lg text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              Today
+            </button>
+          </div>
 
-        {/* View toggle */}
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
-          <button
-            onClick={() => switchView("today")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              viewMode === "today" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <ClipboardList size={14} />
-            Today
-          </button>
-          <button
-            onClick={() => switchView("week")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Grid3X3 size={14} />
-            Week
-          </button>
-          <button
-            onClick={() => switchView("month")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Calendar size={14} />
-            Month
-          </button>
-          <button
-            onClick={() => switchView("map")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              viewMode === "map" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            <Map size={14} />
-            Map
-          </button>
+          {/* View toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => switchView("today")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "today" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <ClipboardList size={14} />
+              Today
+            </button>
+            <button
+              onClick={() => switchView("week")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Grid3X3 size={14} />
+              Week
+            </button>
+            <button
+              onClick={() => switchView("month")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Calendar size={14} />
+              Month
+            </button>
+            <button
+              onClick={() => switchView("map")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "map" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Map size={14} />
+              Map
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Weather widget */}
-      <WeatherWidget days={days} />
+      {!isFieldRole && <WeatherWidget days={days} />}
 
-      {/* Needs Scheduling panel — always visible, drop target for unscheduling */}
-      <div
+      {/* Needs Scheduling panel — admin only */}
+      {!isFieldRole && <div
         className={`border rounded-xl p-4 mb-4 transition-colors ${
           dropZoneActive
             ? "border-amber-400 bg-amber-100/70 ring-2 ring-amber-300"
@@ -539,7 +547,7 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* View content */}
       {viewMode === "week" && (
@@ -582,14 +590,16 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
         <TodayView visits={visits} crews={crews} />
       )}
 
-      {/* Add Visit Modal */}
-      <AddVisitModal
-        open={showAddVisit}
-        onClose={() => { setShowAddVisit(false); setPreselectedProjectId(undefined); }}
-        crews={crews}
-        preselectedProjectId={preselectedProjectId}
-        onCreated={() => router.refresh()}
-      />
+      {/* Add Visit Modal (admin only) */}
+      {!isFieldRole && (
+        <AddVisitModal
+          open={showAddVisit}
+          onClose={() => { setShowAddVisit(false); setPreselectedProjectId(undefined); }}
+          crews={crews}
+          preselectedProjectId={preselectedProjectId}
+          onCreated={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
