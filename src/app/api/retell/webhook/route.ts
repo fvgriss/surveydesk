@@ -79,8 +79,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Retell webhook] event=${event}, call_id=${call?.call_id}, call_type=${call?.call_type}, direction=${call?.direction}`);
 
-    // We only care about call_ended or call_analyzed events
-    if (event !== "call_ended" && event !== "call_analyzed") {
+    // Only process call_analyzed — it fires after call_ended with full
+    // summary + transcript. Processing both causes duplicate call logs.
+    if (event !== "call_analyzed") {
       return NextResponse.json({ received: true });
     }
 

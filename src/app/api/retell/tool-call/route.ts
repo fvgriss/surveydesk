@@ -89,7 +89,9 @@ async function createLead(
   callData?: { call_id?: string; from_number?: string }
 ): Promise<string> {
   try {
-    const callerPhone = args.caller_phone || callData?.from_number || null;
+    // Prefer the actual caller ID (from_number) so we always capture it,
+    // even if the caller doesn't verbally provide a phone number.
+    const callerPhone = callData?.from_number || args.caller_phone || null;
 
     // Try to find existing contact by phone (normalized last-10-digit match)
     let contactId: string | null = null;
