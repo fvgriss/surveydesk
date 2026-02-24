@@ -71,6 +71,11 @@ export default function ProposalForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState(
+    initialProposal
+      ? contacts.find((c) => c.id === initialProposal.contactId)?.email || ""
+      : ""
+  );
 
   // Initialize form state
   const [formData, setFormData] = useState<ProposalData>(
@@ -241,6 +246,8 @@ export default function ProposalForm({
       // Then send it
       const sendResponse = await fetch(`/api/proposals/${proposal.id}/send`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(recipientEmail ? { email: recipientEmail } : {}),
       });
 
       if (!sendResponse.ok) {
@@ -283,7 +290,12 @@ export default function ProposalForm({
               </label>
               <select
                 value={formData.contactId}
-                onChange={(e) => setFormData((prev) => ({ ...prev, contactId: e.target.value }))}
+                onChange={(e) => {
+                  const cid = e.target.value;
+                  setFormData((prev) => ({ ...prev, contactId: cid }));
+                  const c = contacts.find((ct) => ct.id === cid);
+                  if (c?.email) setRecipientEmail(c.email);
+                }}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select contact</option>
@@ -312,6 +324,22 @@ export default function ProposalForm({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Recipient Email
+            </label>
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              placeholder="Email address to send proposal to"
+              className="w-full max-w-md px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {formData.contactId && !recipientEmail && (
+              <p className="text-xs text-amber-600 mt-1">No email on file for this contact — enter one to send.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
