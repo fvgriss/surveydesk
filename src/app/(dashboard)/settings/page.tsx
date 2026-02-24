@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { tenants, crews, integrations } from "@/db/schema";
+import { tenants, crews, integrations, users } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { SettingsClient } from "./settings-client";
@@ -31,6 +31,16 @@ export default async function SettingsPage() {
         eq(integrations.provider, "gmail")
       )
     )
+    .limit(1);
+
+  // Fetch current user's notification prefs
+  const [currentUser] = await db
+    .select({
+      smsNotifications: users.smsNotifications,
+      emailNotifications: users.emailNotifications,
+    })
+    .from(users)
+    .where(eq(users.id, tenant.userId))
     .limit(1);
 
   const crewRows = await db
@@ -68,6 +78,10 @@ export default async function SettingsPage() {
       }
       retellPhone={firm.retellPhoneNumber || null}
       subscriptionStatus={firm.subscriptionStatus || "trialing"}
+      notificationPrefs={{
+        smsNotifications: currentUser?.smsNotifications ?? true,
+        emailNotifications: currentUser?.emailNotifications ?? true,
+      }}
     />
   );
 }

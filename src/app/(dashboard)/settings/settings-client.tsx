@@ -17,6 +17,7 @@ import {
   Mail,
   Unlink,
   Phone,
+  Bell,
 } from "lucide-react";
 
 type Firm = {
@@ -71,8 +72,14 @@ const TABS = [
   { id: "firm", label: "Firm Profile", icon: Building2 },
   { id: "crews", label: "Crews", icon: Users },
   { id: "defaults", label: "Defaults & Templates", icon: FileText },
+  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "integrations", label: "Integrations", icon: Link },
 ];
+
+type NotificationPrefs = {
+  smsNotifications: boolean;
+  emailNotifications: boolean;
+};
 
 export function SettingsClient({
   firm,
@@ -80,12 +87,14 @@ export function SettingsClient({
   gmail,
   retellPhone,
   subscriptionStatus,
+  notificationPrefs,
 }: {
   firm: Firm;
   crews: Crew[];
   gmail: GmailStatus;
   retellPhone: string | null;
   subscriptionStatus: string;
+  notificationPrefs: NotificationPrefs;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("firm");
@@ -122,6 +131,7 @@ export function SettingsClient({
         <CrewsTab crews={initialCrews} />
       )}
       {activeTab === "defaults" && <DefaultsTab firm={firm} />}
+      {activeTab === "notifications" && <NotificationsTab prefs={notificationPrefs} />}
       {activeTab === "integrations" && <IntegrationsTab gmail={gmail} retellPhone={retellPhone} subscriptionStatus={subscriptionStatus} />}
     </div>
   );
@@ -692,6 +702,116 @@ function DefaultsTab({ firm }: { firm: Firm }) {
             </>
           )}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Notifications Tab ──────────────────────────────────────────
+
+function NotificationsTab({ prefs }: { prefs: NotificationPrefs }) {
+  const router = useRouter();
+  const [emailOn, setEmailOn] = useState(prefs.emailNotifications);
+  const [smsOn, setSmsOn] = useState(prefs.smsNotifications);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleToggle(field: "emailNotifications" | "smsNotifications", value: boolean) {
+    if (field === "emailNotifications") setEmailOn(value);
+    else setSmsOn(value);
+    setSaved(false);
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        router.refresh();
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border border-gray-100 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-1">Lead Notifications</h2>
+        <p className="text-xs text-gray-500 mb-5">
+          Get notified when a new lead comes in from a phone call or email.
+        </p>
+
+        <div className="space-y-4">
+          {/* Email toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Mail size={16} className="text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Email notifications</p>
+                <p className="text-xs text-gray-500">Receive an email for each new lead</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleToggle("emailNotifications", !emailOn)}
+              disabled={saving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                emailOn ? "bg-blue-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  emailOn ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* SMS toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                <Phone size={16} className="text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">SMS notifications</p>
+                <p className="text-xs text-gray-500">Receive a text message for each new lead</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleToggle("smsNotifications", !smsOn)}
+              disabled={saving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                smsOn ? "bg-blue-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  smsOn ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {saved && (
+          <p className="text-xs text-green-600 mt-4 flex items-center gap-1">
+            <Check size={12} /> Saved
+          </p>
+        )}
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-1">Weekly Digest</h2>
+        <p className="text-xs text-gray-500">
+          A summary of your week&rsquo;s activity is sent every Monday morning when email notifications are enabled.
+        </p>
       </div>
     </div>
   );
