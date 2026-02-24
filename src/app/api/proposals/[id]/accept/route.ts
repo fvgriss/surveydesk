@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { proposals, leads, projects } from "@/db/schema";
+import { proposals, leads, projects, contacts } from "@/db/schema";
+import { notifyTeamProposalAccepted } from "@/lib/services/notify-owner";
 import { eq } from "drizzle-orm";
 
 export async function POST(
@@ -97,6 +98,20 @@ export async function POST(
     console.log(
       `[accept] Created project ${newProject.id} from proposal ${proposal.id}`
     );
+
+    // Notify team about accepted proposal
+    const [contact] = await db
+      .select({ firstName: contacts.firstName, lastName: contacts.lastName })
+      .from(contacts)
+      .where(eq(contacts.id, proposal.contactId))
+      .limit(1);
+
+    notifyTeamProposalAccepted(proposal.tenantId, {
+      clientName: [contact?.firstName, contact?.lastName].filter(Boolean).join(" ") || name,
+      propertyAddress: proposal.propertyAddress,
+      surveyType: proposal.surveyType,
+      contractValue: proposal.total,
+    });
 
     return NextResponse.json({
       success: true,

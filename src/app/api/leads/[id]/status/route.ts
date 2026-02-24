@@ -24,7 +24,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, lostReason } = await req.json();
 
     if (!VALID_STATUSES.includes(status)) {
       return NextResponse.json(
@@ -33,9 +33,16 @@ export async function PATCH(
       );
     }
 
+    const setFields: Record<string, unknown> = { status, updatedAt: new Date() };
+    if (status === "lost" && lostReason) {
+      setFields.lostReason = lostReason;
+    } else if (status !== "lost") {
+      setFields.lostReason = null;
+    }
+
     const [updated] = await db
       .update(leads)
-      .set({ status, updatedAt: new Date() })
+      .set(setFields)
       .where(and(eq(leads.id, id), eq(leads.tenantId, tenant.tenantId)))
       .returning({ id: leads.id, status: leads.status });
 

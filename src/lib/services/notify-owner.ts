@@ -14,24 +14,17 @@ function getTwilioClient() {
   return { client: twilio(sid, token), from };
 }
 
-interface NewLeadData {
-  callerName?: string | null;
-  propertyAddress?: string | null;
-  surveyType?: string | null;
-  urgency?: string | null;
-  source?: string | null;
+function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
 }
 
-/**
- * Notify all active team members (via email and/or SMS) when a new lead is created.
- * Non-blocking — errors are logged but never thrown.
- */
-export async function notifyOwnerNewLead(
+/** Shared helper: fetch active users + firm name, send email+SMS in parallel */
+async function notifyTeam(
   tenantId: string,
-  lead: NewLeadData
+  build: (firmName: string, appUrl: string) => { subject: string; html: string; smsBody: string }
 ): Promise<void> {
   try {
-    // Get all active users who may want notifications
     const notifyUsers = await db
       .select({
         email: users.email,
@@ -41,16 +34,10 @@ export async function notifyOwnerNewLead(
         smsNotifications: users.smsNotifications,
       })
       .from(users)
-      .where(
-        and(
-          eq(users.tenantId, tenantId),
-          eq(users.isActive, true)
-        )
-      );
+      .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
 
     if (notifyUsers.length === 0) return;
 
-    // Get firm name for branding
     const [tenant] = await db
       .select({ name: tenants.name })
       .from(tenants)
@@ -58,56 +45,33 @@ export async function notifyOwnerNewLead(
       .limit(1);
 
     const firmName = tenant?.name || "SurveyDesk";
-    const name = lead.callerName || "Unknown caller";
-    const address = lead.propertyAddress || "Address TBD";
-    const surveyLabel = (lead.surveyType || "survey").replace(/_/g, " ");
-    const urgencyLabel = lead.urgency ? ` (${lead.urgency} urgency)` : "";
-    const sourceLabel = lead.source === "email" ? " via email" : " via phone";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app";
+    const content = build(firmName, appUrl);
 
-    // Send email notifications in parallel
     const emailPromises = notifyUsers
       .filter((u) => u.emailNotifications && u.email && process.env.RESEND_API_KEY)
       .map(async (user) => {
         try {
           await resend.emails.send({
-            from: "SurveyOS <onboarding@resend.dev>",
+            from: "SurveyDesk <notifications@updates.surveydesk.app>",
             to: user.email,
-            subject: `New lead: ${surveyLabel} survey at ${address}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 480px;">
-                <p>Hi ${user.fullName?.split(" ")[0] || "there"},</p>
-                <p>A new lead just came in${sourceLabel}:</p>
-                <table style="border-collapse: collapse; margin: 16px 0;">
-                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Contact</td><td style="padding: 4px 0; font-size: 14px;">${name}</td></tr>
-                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
-                  <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${address}</td></tr>
-                  ${lead.urgency ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Urgency</td><td style="padding: 4px 0; font-size: 14px;">${lead.urgency}</td></tr>` : ""}
-                </table>
-                <p style="margin-top: 16px;">
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app"}/intake" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View in Dashboard</a>
-                </p>
-                <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
-              </div>
-            `,
+            subject: content.subject,
+            html: content.html.replace("{{firstName}}", user.fullName?.split(" ")[0] || "there"),
           });
         } catch (emailErr) {
           console.warn(`[notify-team] Email to ${user.email} failed:`, emailErr);
         }
       });
 
-    // Send SMS notifications in parallel
     const smsPromises = notifyUsers
       .filter((u) => u.smsNotifications && u.phone)
       .map(async (user) => {
         const tw = getTwilioClient();
         if (!tw) return;
         try {
-          const digits = user.phone!.replace(/\D/g, "");
-          const to = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
-
           await tw.client.messages.create({
-            body: `New lead${sourceLabel}: ${name} needs a ${surveyLabel} at ${address}${urgencyLabel}. — ${firmName}`,
-            to,
+            body: content.smsBody,
+            to: formatPhone(user.phone!),
             from: tw.from,
           });
         } catch (smsErr) {
@@ -119,4 +83,158 @@ export async function notifyOwnerNewLead(
   } catch (err) {
     console.warn("[notify-team] Notification failed (non-blocking):", err);
   }
+}
+
+// ─── New Lead ───────────────────────────────────────────────────
+
+interface NewLeadData {
+  callerName?: string | null;
+  propertyAddress?: string | null;
+  surveyType?: string | null;
+  urgency?: string | null;
+  source?: string | null;
+}
+
+export async function notifyOwnerNewLead(
+  tenantId: string,
+  lead: NewLeadData
+): Promise<void> {
+  const name = lead.callerName || "Unknown caller";
+  const address = lead.propertyAddress || "Address TBD";
+  const surveyLabel = (lead.surveyType || "survey").replace(/_/g, " ");
+  const urgencyLabel = lead.urgency ? ` (${lead.urgency} urgency)` : "";
+  const sourceLabel = lead.source === "email" ? " via email" : " via phone";
+
+  await notifyTeam(tenantId, (firmName, appUrl) => ({
+    subject: `New lead: ${surveyLabel} survey at ${address}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hi {{firstName}},</p>
+        <p>A new lead just came in${sourceLabel}:</p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Contact</td><td style="padding: 4px 0; font-size: 14px;">${name}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${address}</td></tr>
+          ${lead.urgency ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Urgency</td><td style="padding: 4px 0; font-size: 14px;">${lead.urgency}</td></tr>` : ""}
+        </table>
+        <p style="margin-top: 16px;">
+          <a href="${appUrl}/intake" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View in Dashboard</a>
+        </p>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
+      </div>
+    `,
+    smsBody: `New lead${sourceLabel}: ${name} needs a ${surveyLabel} at ${address}${urgencyLabel}. — ${firmName}`,
+  }));
+}
+
+// ─── Proposal Accepted ─────────────────────────────────────────
+
+interface ProposalAcceptedData {
+  clientName: string;
+  propertyAddress: string;
+  surveyType: string;
+  contractValue: string;
+}
+
+export async function notifyTeamProposalAccepted(
+  tenantId: string,
+  data: ProposalAcceptedData
+): Promise<void> {
+  const surveyLabel = data.surveyType.replace(/_/g, " ");
+  const value = parseFloat(data.contractValue).toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+  await notifyTeam(tenantId, (firmName, appUrl) => ({
+    subject: `Proposal accepted: ${surveyLabel} at ${data.propertyAddress}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hi {{firstName}},</p>
+        <p>Great news — a proposal has been accepted!</p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Client</td><td style="padding: 4px 0; font-size: 14px;">${data.clientName}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${data.propertyAddress}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Value</td><td style="padding: 4px 0; font-size: 14px;">${value}</td></tr>
+        </table>
+        <p style="margin-top: 16px;">
+          <a href="${appUrl}/projects" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View Projects</a>
+        </p>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
+      </div>
+    `,
+    smsBody: `Proposal accepted! ${data.clientName} — ${surveyLabel} at ${data.propertyAddress} (${value}). — ${firmName}`,
+  }));
+}
+
+// ─── Payment Received ──────────────────────────────────────────
+
+interface PaymentReceivedData {
+  invoiceNumber: string;
+  amount: string;
+  method: string;
+  status: string;
+}
+
+export async function notifyTeamPaymentReceived(
+  tenantId: string,
+  data: PaymentReceivedData
+): Promise<void> {
+  const amount = parseFloat(data.amount).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const statusLabel = data.status === "paid" ? "Paid in full" : "Partial payment";
+
+  await notifyTeam(tenantId, (firmName, appUrl) => ({
+    subject: `Payment received: ${amount} for invoice #${data.invoiceNumber}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hi {{firstName}},</p>
+        <p>A payment has been received:</p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Invoice</td><td style="padding: 4px 0; font-size: 14px;">#${data.invoiceNumber}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Amount</td><td style="padding: 4px 0; font-size: 14px;">${amount}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Method</td><td style="padding: 4px 0; font-size: 14px;">${data.method.replace(/_/g, " ")}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Status</td><td style="padding: 4px 0; font-size: 14px;">${statusLabel}</td></tr>
+        </table>
+        <p style="margin-top: 16px;">
+          <a href="${appUrl}/billing" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View Billing</a>
+        </p>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
+      </div>
+    `,
+    smsBody: `Payment received: ${amount} for invoice #${data.invoiceNumber} (${statusLabel}). — ${firmName}`,
+  }));
+}
+
+// ─── Field Visit Completed ─────────────────────────────────────
+
+interface FieldVisitCompletedData {
+  propertyAddress: string;
+  surveyType: string;
+  crewName?: string | null;
+}
+
+export async function notifyTeamFieldVisitCompleted(
+  tenantId: string,
+  data: FieldVisitCompletedData
+): Promise<void> {
+  const surveyLabel = data.surveyType.replace(/_/g, " ");
+  const crewInfo = data.crewName ? ` by ${data.crewName}` : "";
+
+  await notifyTeam(tenantId, (firmName, appUrl) => ({
+    subject: `Field visit completed: ${data.propertyAddress}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hi {{firstName}},</p>
+        <p>A field visit has been completed${crewInfo}:</p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Address</td><td style="padding: 4px 0; font-size: 14px;">${data.propertyAddress}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Survey</td><td style="padding: 4px 0; font-size: 14px;">${surveyLabel}</td></tr>
+          ${data.crewName ? `<tr><td style="padding: 4px 12px 4px 0; color: #6b7280; font-size: 14px;">Crew</td><td style="padding: 4px 0; font-size: 14px;">${data.crewName}</td></tr>` : ""}
+        </table>
+        <p style="margin-top: 16px;">
+          <a href="${appUrl}/schedule" style="background: #1e293b; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px;">View Schedule</a>
+        </p>
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">${firmName} — powered by SurveyOS</p>
+      </div>
+    `,
+    smsBody: `Field visit completed${crewInfo}: ${surveyLabel} at ${data.propertyAddress}. — ${firmName}`,
+  }));
 }

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "./dashboard-shell";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { db } from "@/db";
-import { tenants } from "@/db/schema";
+import { tenants, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function DashboardLayout({
@@ -49,6 +49,19 @@ export default async function DashboardLayout({
 
     firmName = tenant?.name || null;
     retellPhoneNumber = tenant?.retellPhoneNumber || null;
+
+    // Check if invited user needs welcome screen
+    if (!isImpersonating) {
+      const [currentUser] = await db
+        .select({ welcomeComplete: users.welcomeComplete })
+        .from(users)
+        .where(eq(users.id, auth.userId))
+        .limit(1);
+
+      if (currentUser && !currentUser.welcomeComplete) {
+        redirect("/welcome");
+      }
+    }
   }
 
   return (

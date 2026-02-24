@@ -29,6 +29,7 @@ type Call = {
   summary: string | null;
   transcript: string | null;
   outcome: string | null;
+  recordingUrl: string | null;
   startedAt: string;
   contactName: string;
   contactCompany: string | null;
@@ -48,6 +49,7 @@ type Lead = {
   callerEmail: string | null;
   callerPhone: string | null;
   specialRequests: string | null;
+  lostReason: string | null;
   createdAt: string;
   contactName: string;
   contactCompany: string | null;
@@ -126,10 +128,17 @@ function StatusDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showLostModal, setShowLostModal] = useState(false);
+  const [lostReason, setLostReason] = useState("");
 
   async function handleSelect(status: string) {
     if (status === currentStatus) {
       setOpen(false);
+      return;
+    }
+    if (status === "lost") {
+      setOpen(false);
+      setShowLostModal(true);
       return;
     }
     setSaving(true);
@@ -147,6 +156,24 @@ function StatusDropdown({
     } finally {
       setSaving(false);
       setOpen(false);
+    }
+  }
+
+  async function handleLostConfirm() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "lost", lostReason }),
+      });
+      if (res.ok) onStatusChange("lost");
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false);
+      setShowLostModal(false);
+      setLostReason("");
     }
   }
 
@@ -177,6 +204,38 @@ function StatusDropdown({
                 {opt.value === currentStatus && <Check size={12} className="text-gray-500" />}
               </button>
             ))}
+          </div>
+        </>
+      )}
+      {showLostModal && (
+        <>
+          <div className="fixed inset-0 z-30 bg-black/20" onClick={() => { setShowLostModal(false); setLostReason(""); }} />
+          <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[280px]">
+            <div className="text-sm font-medium text-gray-900 mb-2">Mark as Lost</div>
+            <p className="text-xs text-gray-500 mb-3">Why was this lead lost?</p>
+            <textarea
+              value={lostReason}
+              onChange={(e) => setLostReason(e.target.value)}
+              placeholder="e.g., Went with competitor, budget too high..."
+              rows={3}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                onClick={() => { setShowLostModal(false); setLostReason(""); }}
+                className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLostConfirm}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Mark Lost"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -396,6 +455,12 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
                     )}
                   </div>
                 )}
+                {selectedCall.recordingUrl && (
+                  <div className="mb-4">
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recording</div>
+                    <audio controls src={selectedCall.recordingUrl} className="w-full h-10" preload="none" />
+                  </div>
+                )}
                 <div className="flex items-center gap-3 text-xs text-gray-400">
                   <span>{formatDate(selectedCall.startedAt)}</span>
                   <span>{formatTime(selectedCall.startedAt)}</span>
@@ -553,6 +618,14 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
                         <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 mb-3">
                           <div className="text-[10px] font-medium text-purple-600 uppercase tracking-wide">Special Requests / Access</div>
                           <p className="text-sm text-purple-800 mt-1">{selectedLead.specialRequests}</p>
+                        </div>
+                      )}
+
+                      {/* Lost Reason */}
+                      {selectedLead.status === "lost" && selectedLead.lostReason && (
+                        <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-3">
+                          <div className="text-[10px] font-medium text-red-600 uppercase tracking-wide">Lost Reason</div>
+                          <p className="text-sm text-red-800 mt-1">{selectedLead.lostReason}</p>
                         </div>
                       )}
 

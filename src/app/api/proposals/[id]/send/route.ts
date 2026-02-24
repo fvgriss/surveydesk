@@ -272,7 +272,7 @@ export async function POST(
     let emailResponse;
     try {
       emailResponse = await resend.emails.send({
-        from: "SurveyOS <onboarding@resend.dev>",
+        from: "SurveyDesk <proposals@updates.surveydesk.app>",
         to: email,
         subject: `Survey Proposal from ${tenantData.name} - ${proposal.propertyAddress}`,
         html: emailHtml,

@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
           role,
           emailNotifications: false,
           smsNotifications: false,
+          welcomeComplete: false,
         })
         .returning();
     } catch (dbError) {
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: "SurveyOS <onboarding@resend.dev>",
+          from: "SurveyDesk <team@updates.surveydesk.app>",
           to: email,
           subject: `You've been invited to ${firmName}`,
           html: `

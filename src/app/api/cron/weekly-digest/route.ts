@@ -216,7 +216,7 @@ export async function GET(req: NextRequest) {
         `;
 
         await resend.emails.send({
-          from: "SurveyOS <onboarding@resend.dev>",
+          from: "SurveyDesk <digest@updates.surveydesk.app>",
           to: owner.email,
           subject: `Your week in review — ${tenant.name}`,
           html,

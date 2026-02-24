@@ -14,6 +14,7 @@ type Invoice = {
   dueDate: string;
   sentAt: string | null;
   paidAt: string | null;
+  projectId: string | null;
   contactName: string;
   contactCompany: string | null;
   propertyAddress: string | null;
@@ -29,6 +30,7 @@ type Totals = {
 };
 
 import { INVOICE_STATUS_COLORS as statusColor, DEFAULT_BADGE } from "@/lib/constants";
+import { PaymentForm } from "@/app/(dashboard)/projects/[id]/payment-form";
 
 function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className || "bg-gray-50 text-gray-600 border-gray-200"}`}>{children}</span>;
@@ -50,6 +52,7 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
   const router = useRouter();
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
 
   const filteredProjects = (projects || []).filter(
     (p) =>
@@ -152,7 +155,11 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
           </thead>
           <tbody>
             {invoices.map((inv) => (
-              <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors">
+              <tr
+                key={inv.id}
+                onClick={() => inv.projectId && router.push(`/projects/${inv.projectId}`)}
+                className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+              >
                 <td className="px-4 py-3 text-sm font-mono text-gray-600">{inv.invoiceNumber}</td>
                 <td className="px-4 py-3">
                   <div className="text-sm font-medium text-gray-800">{inv.contactName}</div>
@@ -164,22 +171,43 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
                 <td className="px-4 py-3"><Badge className={statusColor[inv.status] || ""}>{inv.status.replace("_", " ")}</Badge></td>
                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(inv.dueDate)}</td>
                 <td className="px-4 py-3">
-                  <a
-                    href={`/api/invoices/${inv.id}/pdf`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    title="Download PDF"
-                  >
-                    <Download size={14} />
-                  </a>
+                  <div className="flex items-center gap-1">
+                    {["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPaymentInvoice(inv); }}
+                        className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
+                      >
+                        Record Payment
+                      </button>
+                    )}
+                    <a
+                      href={`/api/invoices/${inv.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Download PDF"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {paymentInvoice && (
+        <PaymentForm
+          open
+          onClose={() => setPaymentInvoice(null)}
+          invoiceId={paymentInvoice.id}
+          invoiceNumber={paymentInvoice.invoiceNumber}
+          amountDue={paymentInvoice.total - paymentInvoice.amountPaid}
+          onCreated={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }

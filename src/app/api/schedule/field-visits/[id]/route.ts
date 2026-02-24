@@ -4,6 +4,7 @@ import { fieldVisits, crews, projects, contacts, tenants } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { sendVisitRescheduledSMS } from "@/lib/services/sms";
+import { notifyTeamFieldVisitCompleted } from "@/lib/services/notify-owner";
 
 // PATCH /api/schedule/field-visits/[id] — reschedule or reassign a visit
 export async function PATCH(
@@ -76,6 +77,40 @@ export async function PATCH(
       .set(updateFields)
       .where(eq(fieldVisits.id, id))
       .returning();
+
+    // Notify team when field visit is completed
+    if (status === "completed" && updated) {
+      try {
+        const [projectData] = await db
+          .select({
+            propertyAddress: projects.propertyAddress,
+            surveyType: projects.surveyType,
+          })
+          .from(projects)
+          .where(eq(projects.id, updated.projectId))
+          .limit(1);
+
+        let crewName: string | null = null;
+        if (updated.crewId) {
+          const [crewData] = await db
+            .select({ name: crews.name })
+            .from(crews)
+            .where(eq(crews.id, updated.crewId))
+            .limit(1);
+          crewName = crewData?.name || null;
+        }
+
+        if (projectData) {
+          notifyTeamFieldVisitCompleted(tenant.tenantId, {
+            propertyAddress: projectData.propertyAddress,
+            surveyType: projectData.surveyType,
+            crewName,
+          });
+        }
+      } catch (notifErr) {
+        console.warn("Field visit notification failed (non-blocking):", notifErr);
+      }
+    }
 
     // Send SMS if scheduledDate changed (not just crew reassignment)
     if (scheduledDate && scheduledDate !== "1970-01-01") {

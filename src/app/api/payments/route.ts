@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { payments, invoices, projects } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
+import { notifyTeamPaymentReceived } from "@/lib/services/notify-owner";
 
 // POST /api/payments — record a payment against an invoice
 export async function POST(req: NextRequest) {
@@ -82,6 +83,20 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date(),
       })
       .where(eq(invoices.id, invoiceId));
+
+    // Notify team about payment
+    const [invoiceForNotif] = await db
+      .select({ invoiceNumber: invoices.invoiceNumber })
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    notifyTeamPaymentReceived(tenant.tenantId, {
+      invoiceNumber: invoiceForNotif?.invoiceNumber || "?",
+      amount: String(amount),
+      method,
+      status: newStatus,
+    });
 
     // Update project totalPaid if linked
     if (invoice.projectId) {

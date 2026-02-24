@@ -222,6 +222,8 @@ export const users = pgTable(
     // Notification prefs
     smsNotifications: boolean("sms_notifications").notNull().default(true),
     emailNotifications: boolean("email_notifications").notNull().default(true),
+    // Onboarding
+    welcomeComplete: boolean("welcome_complete").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

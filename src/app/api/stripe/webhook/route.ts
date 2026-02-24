@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { tenants, invoices, payments, projects } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
+import { notifyTeamPaymentReceived } from "@/lib/services/notify-owner";
 
 /**
  * POST /api/stripe/webhook
@@ -327,6 +328,20 @@ async function handleInvoicePayment(session: Stripe.Checkout.Session) {
       updatedAt: new Date(),
     })
     .where(eq(invoices.id, invoiceId));
+
+  // Notify team about payment
+  const [invoiceForNotif] = await db
+    .select({ invoiceNumber: invoices.invoiceNumber })
+    .from(invoices)
+    .where(eq(invoices.id, invoiceId))
+    .limit(1);
+
+  notifyTeamPaymentReceived(tenantId, {
+    invoiceNumber: invoiceForNotif?.invoiceNumber || "?",
+    amount: amountPaid,
+    method: "credit_card",
+    status: newStatus,
+  });
 
   // Update project totalPaid if linked
   if (invoice.projectId) {
