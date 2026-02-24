@@ -18,6 +18,7 @@ import {
   Unlink,
   Phone,
   Bell,
+  BellOff,
   UserPlus,
 } from "lucide-react";
 
@@ -464,13 +465,17 @@ function MembersSection({
     }
   }
 
+  const [optimisticNotifs, setOptimisticNotifs] = useState<Record<string, boolean>>({});
+
   async function handleToggleNotifications(member: TeamMember) {
+    const newValue = !(optimisticNotifs[member.id] ?? member.emailNotifications);
+    setOptimisticNotifs((prev) => ({ ...prev, [member.id]: newValue }));
     await fetch(`/api/team/${member.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        emailNotifications: !member.emailNotifications,
-        smsNotifications: !member.smsNotifications,
+        emailNotifications: newValue,
+        smsNotifications: newValue,
       }),
     });
     router.refresh();
@@ -640,19 +645,22 @@ function MembersSection({
                     <p className="text-xs text-gray-500 mt-0.5">{member.email}{member.phone ? ` · ${member.phone}` : ""}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {isOwner && (
-                      <button
-                        onClick={() => handleToggleNotifications(member)}
-                        title={member.emailNotifications ? "Receiving lead notifications" : "Not receiving lead notifications"}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          member.emailNotifications
-                            ? "text-blue-500 hover:bg-blue-50"
-                            : "text-gray-300 hover:bg-gray-100"
-                        }`}
-                      >
-                        <Bell size={13} />
-                      </button>
-                    )}
+                    {isOwner && (() => {
+                      const notifOn = optimisticNotifs[member.id] ?? member.emailNotifications;
+                      return (
+                        <button
+                          onClick={() => handleToggleNotifications(member)}
+                          title={notifOn ? "Receiving lead notifications" : "Not receiving lead notifications"}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            notifOn
+                              ? "text-blue-500 hover:bg-blue-50"
+                              : "text-gray-400 hover:bg-gray-100"
+                          }`}
+                        >
+                          {notifOn ? <Bell size={13} /> : <BellOff size={13} />}
+                        </button>
+                      );
+                    })()}
                     {isOwner && !isSelf && (
                       <>
                       <button
