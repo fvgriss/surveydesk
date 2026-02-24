@@ -21,6 +21,12 @@ export async function GET() {
       city: tenants.city,
       state: tenants.state,
       createdAt: tenants.createdAt,
+      retellAgentId: tenants.retellAgentId,
+      retellPhoneNumber: tenants.retellPhoneNumber,
+      subscriptionStatus: tenants.subscriptionStatus,
+      subscriptionPlan: tenants.subscriptionPlan,
+      trialEndsAt: tenants.trialEndsAt,
+      onboardingComplete: tenants.onboardingComplete,
       userCount: sql<number>`(SELECT COUNT(*) FROM users WHERE users.tenant_id = ${tenants.id})`.as("user_count"),
     })
     .from(tenants)
