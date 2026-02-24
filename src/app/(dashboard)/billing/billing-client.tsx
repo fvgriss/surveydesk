@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, DollarSign, Send, AlertCircle, X, Search, MapPin, FolderOpen } from "lucide-react";
+import { Plus, DollarSign, Send, AlertCircle, X, Search, MapPin, FolderOpen, Download } from "lucide-react";
 
 type Invoice = {
   id: string;
@@ -145,8 +145,8 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {["Invoice", "Client", "Property", "Type", "Amount", "Status", "Due"].map((h) => (
-                <th key={h} className={`text-[11px] font-medium text-gray-400 uppercase tracking-wider px-4 py-3 ${h === "Amount" ? "text-right" : "text-left"}`}>{h}</th>
+              {["Invoice", "Client", "Property", "Type", "Amount", "Status", "Due", ""].map((h) => (
+                <th key={h || "_actions"} className={`text-[11px] font-medium text-gray-400 uppercase tracking-wider px-4 py-3 ${h === "Amount" ? "text-right" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -163,6 +163,18 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
                 <td className="px-4 py-3 text-sm font-medium text-gray-800 text-right">${inv.total.toLocaleString()}</td>
                 <td className="px-4 py-3"><Badge className={statusColor[inv.status] || ""}>{inv.status.replace("_", " ")}</Badge></td>
                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(inv.dueDate)}</td>
+                <td className="px-4 py-3">
+                  <a
+                    href={`/api/invoices/${inv.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    title="Download PDF"
+                  >
+                    <Download size={14} />
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>

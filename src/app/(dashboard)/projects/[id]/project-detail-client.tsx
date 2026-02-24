@@ -17,8 +17,10 @@ import {
   Building2,
   Save,
   Plus,
+  Download,
 } from "lucide-react";
 import { InvoiceForm } from "./invoice-form";
+import { PaymentForm } from "./payment-form";
 
 import {
   SURVEY_LABELS_FULL as SURVEY_TYPE_LABELS,
@@ -116,6 +118,7 @@ export function ProjectDetailClient({
   const [notes, setNotes] = useState(project.notes || "");
   const [saving, setSaving] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState<InvoiceData | null>(null);
 
   const completedTasks = project.taskChecklist.filter((t) => t.completed).length;
   const totalTasks = project.taskChecklist.length;
@@ -349,6 +352,7 @@ export function ProjectDetailClient({
                     <th className="text-left font-medium pb-2">Status</th>
                     <th className="text-right font-medium pb-2">Total</th>
                     <th className="text-right font-medium pb-2">Due</th>
+                    <th className="font-medium pb-2 w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -378,6 +382,25 @@ export function ProjectDetailClient({
                       </td>
                       <td className="py-2 text-xs text-gray-400 text-right">
                         {fmtDate(inv.dueDate)}
+                      </td>
+                      <td className="py-2 text-right flex items-center justify-end gap-1">
+                        <a
+                          href={`/api/invoices/${inv.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Download PDF"
+                        >
+                          <Download size={14} />
+                        </a>
+                        {["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
+                          <button
+                            onClick={() => setPaymentInvoice(inv)}
+                            className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
+                          >
+                            Record Payment
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -554,6 +577,18 @@ export function ProjectDetailClient({
         contactName={contact.name}
         onCreated={() => router.refresh()}
       />
+
+      {/* Payment Form Modal */}
+      {paymentInvoice && (
+        <PaymentForm
+          open={true}
+          onClose={() => setPaymentInvoice(null)}
+          invoiceId={paymentInvoice.id}
+          invoiceNumber={paymentInvoice.invoiceNumber}
+          amountDue={paymentInvoice.total - paymentInvoice.amountPaid}
+          onCreated={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, getPlanFromPriceId } from "@/lib/stripe";
 import { db } from "@/db";
-import { tenants } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { tenants, invoices, payments, projects } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 /**
@@ -73,9 +73,15 @@ export async function POST(request: NextRequest) {
 /**
  * checkout.session.completed
  * Fired when a customer completes the Stripe Checkout flow.
- * Activates their subscription in our DB.
+ * Handles both subscription checkouts and one-time invoice payments.
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  // If invoiceId is in metadata, this is an invoice payment — not a subscription
+  if (session.metadata?.invoiceId) {
+    await handleInvoicePayment(session);
+    return;
+  }
+
   const tenantId = session.metadata?.tenantId;
   if (!tenantId) {
     console.error("[Stripe webhook] checkout.session.completed missing tenantId in metadata");
@@ -257,6 +263,90 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     .where(eq(tenants.id, tenant.id));
 
   console.log(`[Stripe webhook] Payment failed for tenant ${tenant.id} — marked past_due`);
+}
+
+/**
+ * Handle a one-time invoice payment via Stripe Checkout.
+ * Records the payment, updates the invoice, and updates project totals.
+ */
+async function handleInvoicePayment(session: Stripe.Checkout.Session) {
+  const invoiceId = session.metadata!.invoiceId!;
+  const tenantId = session.metadata!.tenantId!;
+  const amountPaidCents = session.amount_total || 0;
+  const amountPaid = (amountPaidCents / 100).toFixed(2);
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id || null;
+
+  console.log(
+    `[Stripe webhook] Invoice payment: invoice=${invoiceId}, tenant=${tenantId}, amount=$${amountPaid}`
+  );
+
+  // Verify invoice exists
+  const [invoice] = await db
+    .select({ id: invoices.id, total: invoices.total, projectId: invoices.projectId })
+    .from(invoices)
+    .where(eq(invoices.id, invoiceId))
+    .limit(1);
+
+  if (!invoice) {
+    console.error(`[Stripe webhook] Invoice ${invoiceId} not found`);
+    return;
+  }
+
+  // Insert payment record
+  await db.insert(payments).values({
+    tenantId,
+    invoiceId,
+    amount: amountPaid,
+    method: "credit_card",
+    stripePaymentIntentId: paymentIntentId,
+    receivedAt: new Date(),
+  });
+
+  // Recalculate total paid for this invoice
+  const [totals] = await db
+    .select({
+      totalPaid: sql<string>`coalesce(sum(${payments.amount}), '0')`,
+    })
+    .from(payments)
+    .where(eq(payments.invoiceId, invoiceId));
+
+  const totalPaid = parseFloat(totals.totalPaid);
+  const invoiceTotal = parseFloat(invoice.total);
+  const newStatus = totalPaid >= invoiceTotal ? "paid" : "partially_paid";
+
+  await db
+    .update(invoices)
+    .set({
+      amountPaid: totals.totalPaid,
+      status: newStatus,
+      paidAt: newStatus === "paid" ? new Date() : undefined,
+      updatedAt: new Date(),
+    })
+    .where(eq(invoices.id, invoiceId));
+
+  // Update project totalPaid if linked
+  if (invoice.projectId) {
+    await db
+      .update(projects)
+      .set({
+        totalPaid: sql`(
+          select coalesce(sum(i.amount_paid::numeric), 0)
+          from invoices i
+          where i.project_id = ${invoice.projectId}
+          and i.status != 'void'
+        )`,
+        updatedAt: new Date(),
+      })
+      .where(eq(projects.id, invoice.projectId));
+  }
+
+  console.log(
+    `[Stripe webhook] Invoice ${invoiceId} marked ${newStatus} (paid $${amountPaid} of $${invoice.total})`
+  );
 }
 
 /**

@@ -5,6 +5,7 @@ import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { generateInvoicePdf } from "@/lib/pdf/generate-invoice";
 import { eq, and, sql } from "drizzle-orm";
 import { Resend } from "resend";
+import { stripe } from "@/lib/stripe";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -113,6 +114,54 @@ export async function POST(
     });
 
     // Build email
+    const surveyTypeLabel =
+      SURVEY_TYPE_LABELS[projectData.surveyType] || projectData.surveyType;
+
+    // Create Stripe Checkout Session for online payment
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const amountDueCents = Math.round(parseFloat(invoice.total) * 100);
+    let payNowUrl: string | null = null;
+
+    if (amountDueCents > 0) {
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                unit_amount: amountDueCents,
+                product_data: {
+                  name: `Invoice ${invoice.invoiceNumber}`,
+                  description: `${surveyTypeLabel} - ${projectData.propertyAddress}`,
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            invoiceId: invoice.id,
+            tenantId: tenant.tenantId,
+          },
+          success_url: `${appUrl}/invoices/${invoice.id}/paid?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/invoices/${invoice.id}/paid?canceled=true`,
+        });
+
+        payNowUrl = session.url;
+
+        // Save the payment link URL on the invoice
+        await db
+          .update(invoices)
+          .set({
+            stripePaymentLinkUrl: session.url,
+            stripePaymentLinkId: session.id,
+          })
+          .where(eq(invoices.id, id));
+      } catch (stripeErr) {
+        console.warn("[invoice send] Stripe checkout creation failed (non-blocking):", stripeErr);
+      }
+    }
+
     const contactName = contact.firstName
       ? `${contact.firstName}${contact.lastName ? ` ${contact.lastName}` : ""}`
       : "Valued Client";
@@ -127,9 +176,6 @@ export async function POST(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-
-    const surveyTypeLabel =
-      SURVEY_TYPE_LABELS[projectData.surveyType] || projectData.surveyType;
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -162,6 +208,18 @@ export async function POST(
     .amount-label { font-size: 14px; color: #6b7280; }
     .amount-value { font-size: 28px; font-weight: bold; color: #2563eb; }
     .amount-due { font-size: 12px; color: #9ca3af; margin-top: 5px; }
+    .pay-btn {
+      display: inline-block;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px 32px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .pay-section { text-align: center; margin: 25px 0; }
     .footer {
       border-top: 1px solid #e5e7eb;
       margin-top: 30px;
@@ -194,9 +252,18 @@ export async function POST(
       <div class="amount-due">Due by ${dueDateLabel}</div>
     </div>
 
+    ${payNowUrl ? `
+    <div class="pay-section">
+      <a href="${payNowUrl}" class="pay-btn">Pay Now &rarr;</a>
+    </div>
+    ` : ""}
+
     <div class="section">
       <div class="section-content">
-        The invoice PDF is attached to this email. If you have any questions about this invoice, please don't hesitate to reach out.
+        ${payNowUrl
+          ? "You can pay online using the button above, or find the invoice PDF attached to this email."
+          : "The invoice PDF is attached to this email."
+        } If you have any questions about this invoice, please don&rsquo;t hesitate to reach out.
       </div>
     </div>
 
