@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Building2 } from "lucide-react";
+import { Plus, Search, Building2, RefreshCw } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -83,6 +83,8 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
   const [provisioning, setProvisioning] = useState<string | null>(null);
   const [tenantList, setTenantList] = useState(initialTenants);
   const [provisionError, setProvisionError] = useState<string | null>(null);
+  const [updatingAgents, setUpdatingAgents] = useState(false);
+  const [agentUpdateResult, setAgentUpdateResult] = useState<{ updated: number; failed: number } | null>(null);
 
   const tenants = tenantList;
 
@@ -111,6 +113,22 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
       setProvisionError(`Failed for tenant ${tenantId}: ${msg}`);
     } finally {
       setProvisioning(null);
+    }
+  }
+
+  async function handleUpdateAllAgents() {
+    setUpdatingAgents(true);
+    setAgentUpdateResult(null);
+    try {
+      const res = await fetch("/api/admin/update-agents", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Update failed");
+      setAgentUpdateResult({ updated: data.updated, failed: data.failed });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setProvisionError(`Agent update failed: ${msg}`);
+    } finally {
+      setUpdatingAgents(false);
     }
   }
 
@@ -163,13 +181,27 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
             {tenants.length} firm{tenants.length !== 1 ? "s" : ""} on the platform
           </p>
         </div>
-        <Link
-          href="/admin/tenants/create"
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
-        >
-          <Plus size={16} />
-          New Tenant
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleUpdateAllAgents}
+            disabled={updatingAgents}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              updatingAgents
+                ? "bg-gray-100 text-gray-400 cursor-wait"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <RefreshCw size={16} className={updatingAgents ? "animate-spin" : ""} />
+            {updatingAgents ? "Updating..." : "Update All Agents"}
+          </button>
+          <Link
+            href="/admin/tenants/create"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+          >
+            <Plus size={16} />
+            New Tenant
+          </Link>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -209,6 +241,23 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
           <p className="text-sm text-red-800">{provisionError}</p>
           <button onClick={() => setProvisionError(null)} className="text-red-500 hover:text-red-700 text-xs font-medium">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Agent update result */}
+      {agentUpdateResult && (
+        <div className={`mb-4 rounded-lg px-4 py-3 flex items-center justify-between ${
+          agentUpdateResult.failed > 0
+            ? "bg-yellow-50 border border-yellow-200"
+            : "bg-green-50 border border-green-200"
+        }`}>
+          <p className={`text-sm ${agentUpdateResult.failed > 0 ? "text-yellow-800" : "text-green-800"}`}>
+            Updated {agentUpdateResult.updated} agent{agentUpdateResult.updated !== 1 ? "s" : ""}
+            {agentUpdateResult.failed > 0 && `, ${agentUpdateResult.failed} failed`}
+          </p>
+          <button onClick={() => setAgentUpdateResult(null)} className="text-gray-500 hover:text-gray-700 text-xs font-medium">
             Dismiss
           </button>
         </div>

@@ -251,6 +251,16 @@ export async function POST(request: NextRequest) {
 
       linkedLeadId = newLead.id;
       console.log(`[Retell webhook] Created fallback lead: ${newLead.id}`);
+
+      // Notify the tenant owner (non-blocking)
+      const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
+      notifyOwnerNewLead(tenantId, {
+        callerName: parsed.callerName,
+        propertyAddress: parsed.propertyAddress,
+        surveyType,
+        urgency: parsed.urgency,
+        source: "phone_intake",
+      }).catch(() => {});
     }
 
     // --- Determine outcome ---

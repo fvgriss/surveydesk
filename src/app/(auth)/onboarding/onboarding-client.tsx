@@ -151,33 +151,36 @@ export function OnboardingClient({ ownerName, retellPhoneNumber, tenant }: Props
 
               {/* Phone number display */}
               {retellPhoneNumber ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-5">
-                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">
-                    Your SurveyDesk Number
-                  </p>
-                  <p className="text-2xl font-bold text-blue-900 tracking-tight">
-                    {formatPhone(retellPhoneNumber)}
-                  </p>
-                  <p className="text-sm text-blue-700 mt-2">
-                    Any call to this number gets answered, qualified, and turned into a lead in your dashboard.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-5">
-                  <p className="text-sm text-gray-600">
-                    Your AI phone number is being set up. You can find it in your dashboard once it&apos;s ready.
-                  </p>
-                </div>
-              )}
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-5">
+                    <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">
+                      Your SurveyDesk Number
+                    </p>
+                    <p className="text-2xl font-bold text-blue-900 tracking-tight">
+                      {formatPhone(retellPhoneNumber)}
+                    </p>
+                    <p className="text-sm text-blue-700 mt-2">
+                      Any call to this number gets answered, qualified, and turned into a lead in your dashboard.
+                    </p>
+                  </div>
 
-              {/* Try It Now */}
-              {retellPhoneNumber && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-5">
-                  <p className="font-medium text-green-900 mb-1">
-                    Try it now
+                  {/* Try It Now */}
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-5">
+                    <p className="font-medium text-green-900 mb-1">
+                      Try it now
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Call <span className="font-semibold">{formatPhone(retellPhoneNumber)}</span> from your cell phone. Pretend you&apos;re a homeowner who needs a boundary survey. The AI will handle the call, and you&apos;ll see the lead appear in your dashboard in about 30 seconds.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-5">
+                  <p className="font-medium text-amber-900 mb-1">
+                    AI phone agent
                   </p>
-                  <p className="text-sm text-green-700">
-                    Call <span className="font-semibold">{formatPhone(retellPhoneNumber)}</span> from your cell phone. Pretend you&apos;re a homeowner who needs a boundary survey. The AI will handle the call, and you&apos;ll see the lead appear in your dashboard in about 30 seconds.
+                  <p className="text-sm text-amber-700">
+                    Your AI phone number will be activated when you subscribe. Once active, every inbound call gets answered, qualified, and turned into a lead automatically.
                   </p>
                 </div>
               )}

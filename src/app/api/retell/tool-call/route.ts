@@ -191,6 +191,16 @@ async function createLead(
 
     console.log(`[create_lead] Created lead: ${newLead.id} at ${args.property_address}`);
 
+    // Notify the tenant owner (non-blocking)
+    const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
+    notifyOwnerNewLead(tenantId, {
+      callerName: args.caller_name,
+      propertyAddress: args.property_address,
+      surveyType,
+      urgency,
+      source: "phone_intake",
+    }).catch(() => {});
+
     return `Got it. I've created a lead for a ${surveyType.replace("_", " ")} survey at ${args.property_address || "that property"}. Someone from our office will prepare a quote and get back to you within a few hours.`;
   } catch (error) {
     console.error("[create_lead] Error creating lead:", error);

@@ -66,6 +66,8 @@ export default async function SettingsPage() {
             }
           : null
       }
+      retellPhone={firm.retellPhoneNumber || null}
+      subscriptionStatus={firm.subscriptionStatus || "trialing"}
     />
   );
 }

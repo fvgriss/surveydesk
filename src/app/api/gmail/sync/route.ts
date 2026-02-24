@@ -184,6 +184,16 @@ export async function GET(request: Request) {
         console.log(
           `[Gmail sync] Created lead from email: ${subject} → ${newLead.id}`
         );
+
+        // Notify the tenant owner (non-blocking)
+        const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
+        notifyOwnerNewLead(tenant.tenantId, {
+          callerName: fromName || fromEmail,
+          propertyAddress: parsed.propertyAddress,
+          surveyType,
+          urgency: parsed.urgency,
+          source: "email",
+        }).catch(() => {});
       }
 
       // --- Log the email ---

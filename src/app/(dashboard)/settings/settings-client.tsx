@@ -16,6 +16,7 @@ import {
   Link,
   Mail,
   Unlink,
+  Phone,
 } from "lucide-react";
 
 type Firm = {
@@ -77,10 +78,14 @@ export function SettingsClient({
   firm,
   crews: initialCrews,
   gmail,
+  retellPhone,
+  subscriptionStatus,
 }: {
   firm: Firm;
   crews: Crew[];
   gmail: GmailStatus;
+  retellPhone: string | null;
+  subscriptionStatus: string;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("firm");
@@ -117,7 +122,7 @@ export function SettingsClient({
         <CrewsTab crews={initialCrews} />
       )}
       {activeTab === "defaults" && <DefaultsTab firm={firm} />}
-      {activeTab === "integrations" && <IntegrationsTab gmail={gmail} />}
+      {activeTab === "integrations" && <IntegrationsTab gmail={gmail} retellPhone={retellPhone} subscriptionStatus={subscriptionStatus} />}
     </div>
   );
 }
@@ -694,9 +699,20 @@ function DefaultsTab({ firm }: { firm: Firm }) {
 
 // ─── Integrations Tab ───────────────────────────────────────────
 
-function IntegrationsTab({ gmail }: { gmail: GmailStatus }) {
+function formatPhoneDisplay(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (national.length === 10) {
+    return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
+  }
+  return e164;
+}
+
+function IntegrationsTab({ gmail, retellPhone, subscriptionStatus }: { gmail: GmailStatus; retellPhone: string | null; subscriptionStatus: string }) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   async function handleDisconnect() {
     setDisconnecting(true);
@@ -708,8 +724,72 @@ function IntegrationsTab({ gmail }: { gmail: GmailStatus }) {
     }
   }
 
+  async function handleProvisionPhone() {
+    setProvisioning(true);
+    setProvisionError(null);
+    try {
+      const res = await fetch("/api/provision-phone", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Provisioning failed");
+      router.refresh();
+    } catch (err) {
+      setProvisionError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setProvisioning(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Retell AI Phone */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Phone size={20} className="text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">AI Phone Agent</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                AI-powered phone number that answers calls and captures leads.
+              </p>
+            </div>
+          </div>
+
+          {retellPhone ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Active
+            </span>
+          ) : subscriptionStatus === "active" ? (
+            <button
+              onClick={handleProvisionPhone}
+              disabled={provisioning}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <Phone size={12} />
+              {provisioning ? "Activating..." : "Activate Phone"}
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400">Requires subscription</span>
+          )}
+        </div>
+
+        {retellPhone && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Phone Number</span>
+            <p className="text-lg font-semibold text-gray-900 mt-0.5 font-mono">{formatPhoneDisplay(retellPhone)}</p>
+          </div>
+        )}
+
+        {provisionError && (
+          <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {provisionError}
+          </div>
+        )}
+      </div>
+
+      {/* Gmail */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">

@@ -2,16 +2,17 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronLeft, ChevronRight, Calendar, Grid3X3, Map, Clock, CalendarPlus, Users } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, Grid3X3, Map, Clock, CalendarPlus, Users, ClipboardList } from "lucide-react";
 import { type Visit } from "./visit-card";
 import { WeekView } from "./week-view";
 import { MonthView } from "./month-view";
 import { MapView } from "./map-view";
+import { TodayView } from "./today-view";
 import { AddVisitModal } from "./add-visit-modal";
 import { WeatherWidget } from "./weather-widget";
 
 type Crew = { id: string; name: string; chiefName: string | null };
-type ViewMode = "week" | "month" | "map";
+type ViewMode = "week" | "month" | "map" | "today";
 
 type UnscheduledProject = {
   id: string;
@@ -55,6 +56,8 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddVisit, setShowAddVisit] = useState(false);
   const [preselectedProjectId, setPreselectedProjectId] = useState<string | undefined>();
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
+  const [quickAssigning, setQuickAssigning] = useState<string | null>(null); // visit ID being quick-assigned
 
   const year = new Date(currentDate + "T12:00:00").getFullYear();
   const month = new Date(currentDate + "T12:00:00").getMonth();
@@ -236,6 +239,28 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
     [visits, router]
   );
 
+  // Quick-assign: schedule a visit with crew + date from inline dropdowns
+  const handleQuickAssign = useCallback(
+    async (visitId: string, crewId: string, date: string) => {
+      setQuickAssigning(visitId);
+      try {
+        const res = await fetch(`/api/schedule/field-visits/${visitId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scheduledDate: date, crewId }),
+        });
+        if (res.ok) {
+          router.refresh();
+        }
+      } catch (err) {
+        console.error("Quick-assign failed:", err);
+      } finally {
+        setQuickAssigning(null);
+      }
+    },
+    [router]
+  );
+
   const navLabel = viewMode === "month" ? getMonthLabel(currentDate) : getWeekLabel(days);
 
   return (
@@ -296,6 +321,15 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
         {/* View toggle */}
         <div className="flex bg-gray-100 rounded-lg p-0.5">
           <button
+            onClick={() => switchView("today")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              viewMode === "today" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <ClipboardList size={14} />
+            Today
+          </button>
+          <button
             onClick={() => switchView("week")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -348,14 +382,33 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
         }}
         onDrop={handleDropToUnscheduled}
       >
-        <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={() => setQueueCollapsed((c) => !c)}
+          className="flex items-center gap-2 mb-3 w-full"
+        >
           <Clock size={14} className="text-amber-600" />
           <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wide">
-            Needs Scheduling ({unscheduledProjects.length + visibleUnscheduledVisits.length})
+            Needs Scheduling
           </h3>
-        </div>
+          {(unscheduledProjects.length + visibleUnscheduledVisits.length) > 0 && (
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold">
+              {unscheduledProjects.length + visibleUnscheduledVisits.length}
+            </span>
+          )}
+          <span className="ml-auto text-amber-400">
+            {queueCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </span>
+        </button>
 
-        {visibleUnscheduledVisits.length === 0 && unscheduledProjects.length === 0 ? (
+        {queueCollapsed ? (
+          <div className={`text-center py-2 rounded-lg border-2 border-dashed transition-colors ${
+            dropZoneActive ? "border-amber-400 text-amber-700" : "border-amber-200/60 text-gray-400"
+          }`}>
+            <p className="text-xs">
+              {dropZoneActive ? "Drop here to unschedule" : `${unscheduledProjects.length + visibleUnscheduledVisits.length} item${(unscheduledProjects.length + visibleUnscheduledVisits.length) !== 1 ? "s" : ""} — click to expand`}
+            </p>
+          </div>
+        ) : visibleUnscheduledVisits.length === 0 && unscheduledProjects.length === 0 ? (
           <div className={`text-center py-3 rounded-lg border-2 border-dashed transition-colors ${
             dropZoneActive ? "border-amber-400 text-amber-700" : "border-amber-200/60 text-gray-400"
           }`}>
@@ -378,29 +431,71 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
                 draggable
                 onDragStart={(e) => handleDragStart(e, visit.id)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-center justify-between bg-white rounded-lg border border-amber-100 px-3 py-2 cursor-grab active:cursor-grabbing transition-opacity ${
+                className={`bg-white rounded-lg border border-amber-100 px-3 py-2 cursor-grab active:cursor-grabbing transition-opacity ${
                   draggingId === visit.id ? "opacity-40" : ""
                 }`}
               >
-                <div className="flex-1 min-w-0 mr-3">
-                  <div className="text-sm font-medium text-gray-800 truncate">
-                    {visit.projectAddress}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {visit.surveyType.replace("_", " ")} · {visit.contactName}
-                    {visit.crewName ? (
-                      <span className="ml-1.5 inline-flex items-center gap-1 text-amber-600">
-                        <Users size={10} />
-                        {visit.crewName}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800 truncate">
+                        {visit.projectAddress}
                       </span>
-                    ) : (
-                      <span className="ml-1.5 text-red-500 font-medium">· No crew</span>
-                    )}
+                      <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-700 whitespace-nowrap">
+                        {visit.surveyType.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {visit.contactName}
+                      {visit.crewName ? (
+                        <span className="ml-1.5 inline-flex items-center gap-1 text-amber-600">
+                          <Users size={10} />
+                          {visit.crewName}
+                        </span>
+                      ) : (
+                        <span className="ml-1.5 text-red-500 font-medium">No crew</span>
+                      )}
+                    </div>
                   </div>
+                  <span className="text-[10px] text-gray-400 select-none whitespace-nowrap">
+                    drag →
+                  </span>
                 </div>
-                <span className="text-[10px] text-gray-400 mr-2 select-none">
-                  drag to calendar →
-                </span>
+                {/* Quick-assign controls */}
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                  <select
+                    id={`crew-${visit.id}`}
+                    defaultValue={visit.crewId || ""}
+                    className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <option value="">Crew...</option>
+                    {crews.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    id={`date-${visit.id}`}
+                    type="date"
+                    defaultValue=""
+                    className="text-xs border border-gray-200 rounded px-2 py-1"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <button
+                    disabled={quickAssigning === visit.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const crewEl = document.getElementById(`crew-${visit.id}`) as HTMLSelectElement;
+                      const dateEl = document.getElementById(`date-${visit.id}`) as HTMLInputElement;
+                      if (crewEl.value && dateEl.value) {
+                        handleQuickAssign(visit.id, crewEl.value, dateEl.value);
+                      }
+                    }}
+                    className="px-2 py-1 text-xs font-medium text-white bg-amber-600 rounded hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {quickAssigning === visit.id ? "..." : "Assign"}
+                  </button>
+                </div>
               </div>
             ))}
 
@@ -408,31 +503,38 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
             {unscheduledProjects.map((project) => (
               <div
                 key={project.id}
-                className="flex items-center justify-between bg-white rounded-lg border border-amber-100 px-3 py-2"
+                className="bg-white rounded-lg border border-amber-100 px-3 py-2"
               >
-                <div className="flex-1 min-w-0 mr-3">
-                  <div className="text-sm font-medium text-gray-800 truncate">
-                    {project.propertyAddress}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {project.surveyType.replace("_", " ")} · {project.contactName}
-                    {project.contractValue && project.contractValue !== "0" && (
-                      <span className="ml-1 text-gray-400">
-                        · ${Number(project.contractValue).toLocaleString()}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800 truncate">
+                        {project.propertyAddress}
                       </span>
-                    )}
+                      <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-700 whitespace-nowrap">
+                        {project.surveyType.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {project.contactName}
+                      {project.contractValue && project.contractValue !== "0" && (
+                        <span className="ml-1 text-gray-400">
+                          · ${Number(project.contractValue).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      setPreselectedProjectId(project.id);
+                      setShowAddVisit(true);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors whitespace-nowrap"
+                  >
+                    <CalendarPlus size={12} />
+                    Schedule
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setPreselectedProjectId(project.id);
-                    setShowAddVisit(true);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors whitespace-nowrap"
-                >
-                  <CalendarPlus size={12} />
-                  Schedule
-                </button>
               </div>
             ))}
           </div>
@@ -474,6 +576,10 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
+      )}
+
+      {viewMode === "today" && (
+        <TodayView visits={visits} crews={crews} />
       )}
 
       {/* Add Visit Modal */}

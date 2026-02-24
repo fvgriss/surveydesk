@@ -178,3 +178,43 @@ export async function provisionRetellAgent(opts: {
     phoneNumber: number,
   };
 }
+
+/**
+ * Update an existing Retell agent's LLM prompt and tools.
+ * Fetches the agent to find its LLM ID, then patches the LLM.
+ */
+export async function updateAgentPrompt(opts: {
+  agentId: string;
+  firmName: string;
+}): Promise<void> {
+  const apiKey = process.env.RETELL_API_KEY;
+  if (!apiKey) {
+    throw new Error("RETELL_API_KEY is not configured");
+  }
+
+  const retell = new Retell({ apiKey });
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app";
+
+  // Fetch agent to get the LLM ID
+  const agent = await retell.agent.retrieve(opts.agentId);
+  const llmId =
+    agent.response_engine?.type === "retell-llm"
+      ? (agent.response_engine as { type: string; llm_id: string }).llm_id
+      : null;
+
+  if (!llmId) {
+    throw new Error(`Agent ${opts.agentId} has no retell-llm response engine`);
+  }
+
+  // Update the LLM with the latest prompt + tools
+  await retell.llm.update(llmId, {
+    general_prompt: getAgentPrompt(opts.firmName),
+    begin_message: `Hi, thanks for calling ${opts.firmName}! How can I help you today?`,
+    general_tools: [
+      getCreateLeadTool(appUrl),
+      { type: "end_call" as const, name: "end_call", description: "End the call when the conversation is complete." },
+    ],
+  });
+
+  console.log(`[provision] Updated LLM ${llmId} for ${opts.firmName}`);
+}

@@ -17,14 +17,15 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { scheduledDate, crewId } = body as {
+    const { scheduledDate, crewId, status } = body as {
       scheduledDate?: string;
       crewId?: string;
+      status?: string;
     };
 
-    if (!scheduledDate && !crewId) {
+    if (!scheduledDate && !crewId && !status) {
       return NextResponse.json(
-        { error: "Must provide scheduledDate or crewId" },
+        { error: "Must provide scheduledDate, crewId, or status" },
         { status: 400 }
       );
     }
@@ -61,6 +62,14 @@ export async function PATCH(
     };
     if (scheduledDate) updateFields.scheduledDate = scheduledDate;
     if (crewId) updateFields.crewId = crewId;
+    if (status) {
+      const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "rescheduled"];
+      if (validStatuses.includes(status)) {
+        updateFields.status = status;
+        if (status === "in_progress") updateFields.actualArrival = new Date();
+        if (status === "completed") updateFields.actualDeparture = new Date();
+      }
+    }
 
     const [updated] = await db
       .update(fieldVisits)

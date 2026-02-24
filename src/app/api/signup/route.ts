@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { db } from "@/db";
 import { tenants, users } from "@/db/schema";
-import { provisionRetellAgent } from "@/lib/retell/provision";
 
-// POST /api/signup — self-service signup: creates auth user + tenant + user + Retell agent
+// POST /api/signup — self-service signup: creates auth user + tenant + user
+// Retell phone provisioning happens later — either on payment (Stripe webhook)
+// or via admin manual provisioning for trial tenants.
 export async function POST(req: NextRequest) {
   try {
     const { fullName, email, password, firmName, phone, state, firmSize } =
@@ -75,45 +76,11 @@ export async function POST(req: NextRequest) {
       role: "owner",
     });
 
-    // 4. Auto-provision Retell agent + phone number (non-blocking — don't fail signup if this errors)
-    let retellPhoneNumber: string | null = null;
-    let retellAgentId: string | null = null;
-
-    try {
-      const provision = await provisionRetellAgent({
-        firmName,
-        state: state || undefined,
-        tenantId: newTenant.id,
-      });
-
-      retellAgentId = provision.agentId;
-      retellPhoneNumber = provision.phoneNumber;
-
-      // Update tenant with Retell info
-      const { eq } = await import("drizzle-orm");
-      await db
-        .update(tenants)
-        .set({
-          retellAgentId,
-          retellPhoneNumber,
-          updatedAt: new Date(),
-        })
-        .where(eq(tenants.id, newTenant.id));
-
-      console.log(
-        `[signup] Provisioned Retell for ${firmName}: agent=${retellAgentId}, phone=${retellPhoneNumber}`
-      );
-    } catch (retellErr) {
-      // Log but don't fail the signup — they can set up Retell later
-      console.error(
-        "[signup] Retell provisioning failed (non-fatal):",
-        retellErr instanceof Error ? retellErr.message : retellErr
-      );
-    }
+    console.log(`[signup] Created tenant ${newTenant.id} for ${firmName} (trial, no Retell yet)`);
 
     return NextResponse.json({
       success: true,
-      retellPhoneNumber,
+      retellPhoneNumber: null,
       firmSize: firmSize || null,
     });
   } catch (err: unknown) {

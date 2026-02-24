@@ -100,6 +100,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Map Stripe subscription status to our status
   const status = mapStripeStatus(subscription.status);
 
+  // Fetch tenant to check if Retell is already provisioned
+  const [tenant] = await db
+    .select({
+      name: tenants.name,
+      state: tenants.state,
+      retellAgentId: tenants.retellAgentId,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+
   await db
     .update(tenants)
     .set({
@@ -113,6 +124,36 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log(
     `[Stripe webhook] Activated subscription for tenant ${tenantId}: plan=${plan}, status=${status}`
   );
+
+  // Auto-provision Retell if not already set up (non-blocking)
+  if (tenant && !tenant.retellAgentId) {
+    try {
+      const { provisionRetellAgent } = await import("@/lib/retell/provision");
+      const provision = await provisionRetellAgent({
+        firmName: tenant.name,
+        state: tenant.state || undefined,
+        tenantId,
+      });
+
+      await db
+        .update(tenants)
+        .set({
+          retellAgentId: provision.agentId,
+          retellPhoneNumber: provision.phoneNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, tenantId));
+
+      console.log(
+        `[Stripe webhook] Auto-provisioned Retell for ${tenant.name}: phone=${provision.phoneNumber}`
+      );
+    } catch (retellErr) {
+      console.error(
+        "[Stripe webhook] Retell auto-provision failed (non-fatal):",
+        retellErr instanceof Error ? retellErr.message : retellErr
+      );
+    }
+  }
 }
 
 /**
