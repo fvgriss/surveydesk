@@ -48,6 +48,7 @@ export default async function ProjectsPage() {
 
   return (
     <ProjectsClient
+      role={tenant.role}
       projects={rows.map((p) => ({
         id: p.id,
         propertyAddress: p.propertyAddress,

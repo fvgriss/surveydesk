@@ -30,10 +30,10 @@ const NAV_ITEMS = [
   { href: "/proposals", label: "Proposals", icon: FileText, roles: ADMIN_ROLES },
   { href: "/projects", label: "Projects", icon: FolderOpen, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
   { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
-  { href: "/contacts", label: "Contacts", icon: Users, roles: ADMIN_ROLES },
+  { href: "/contacts", label: "Contacts", icon: Users, roles: [...ADMIN_ROLES, "crew_chief"] },
   { href: "/billing", label: "Billing", icon: DollarSign, roles: ADMIN_ROLES },
   { href: "/settings", label: "Settings", icon: Settings, roles: ADMIN_ROLES },
-  { href: "/subscription", label: "Subscription", icon: CreditCard, roles: ["owner"] },
+  { href: "/subscription", label: "Subscription", icon: CreditCard, roles: ["owner", "office_manager"] },
 ];
 
 function formatPhone(phone: string): string {

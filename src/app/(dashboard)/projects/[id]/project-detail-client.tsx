@@ -132,6 +132,7 @@ export function ProjectDetailClient({
   role?: string;
 }) {
   const isFieldRole = FIELD_ROLES.includes(role);
+  const isAdminRole = !isFieldRole;
   const router = useRouter();
   const [project, setProject] = useState(initialProject);
   const [notes, setNotes] = useState(project.notes || "");
@@ -428,7 +429,7 @@ export function ProjectDetailClient({
                 <FileText size={14} className="text-gray-400" />
                 Documents
               </h2>
-              {!isFieldRole && (
+              {role !== "instrument_person" && (
                 <label className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
                   <Upload size={12} />
                   {uploading ? "Uploading..." : "Upload"}
@@ -483,8 +484,8 @@ export function ProjectDetailClient({
             )}
           </div>
 
-          {/* Invoices */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          {/* Invoices (admin only) */}
+          {isAdminRole && <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                 <FileText size={14} className="text-gray-400" />
@@ -568,7 +569,7 @@ export function ProjectDetailClient({
                 </tbody>
               </table>
             )}
-          </div>
+          </div>}
 
           {/* Notes */}
           <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -630,45 +631,47 @@ export function ProjectDetailClient({
             </div>
           </div>
 
-          {/* Financial summary */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
-              <DollarSign size={14} className="text-gray-400" />
-              Financial Summary
-            </h2>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Contract Value</span>
-                <span className="text-sm font-semibold text-gray-900">
-                  {fmt(project.contractValue)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Invoiced</span>
-                <span className="text-sm text-gray-600">
-                  {fmt(project.totalInvoiced)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Paid</span>
-                <span className="text-sm text-emerald-600 font-medium">
-                  {fmt(project.totalPaid)}
-                </span>
-              </div>
-              <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700">
-                  Balance
-                </span>
-                <span
-                  className={`text-sm font-bold ${
-                    balance > 0 ? "text-amber-600" : "text-emerald-600"
-                  }`}
-                >
-                  {fmt(balance)}
-                </span>
+          {/* Financial summary (admin only) */}
+          {isAdminRole && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+                <DollarSign size={14} className="text-gray-400" />
+                Financial Summary
+              </h2>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Contract Value</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {fmt(project.contractValue)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Invoiced</span>
+                  <span className="text-sm text-gray-600">
+                    {fmt(project.totalInvoiced)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Paid</span>
+                  <span className="text-sm text-emerald-600 font-medium">
+                    {fmt(project.totalPaid)}
+                  </span>
+                </div>
+                <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-700">
+                    Balance
+                  </span>
+                  <span
+                    className={`text-sm font-bold ${
+                      balance > 0 ? "text-amber-600" : "text-emerald-600"
+                    }`}
+                  >
+                    {fmt(balance)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Timeline */}
           <div className="bg-white border border-gray-200 rounded-xl p-5">

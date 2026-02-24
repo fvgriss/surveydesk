@@ -45,13 +45,18 @@ type Stats = {
 const fmt = (v: number) =>
   "$" + v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+const FIELD_ROLES = ["crew_chief", "instrument_person"];
+
 export function ProjectsClient({
   projects,
   stats,
+  role = "owner",
 }: {
   projects: Project[];
   stats: Stats;
+  role?: string;
 }) {
+  const isFieldRole = FIELD_ROLES.includes(role);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -86,7 +91,7 @@ export function ProjectsClient({
             <span className="text-xs font-medium text-gray-500">Pending</span>
           </div>
           <div className="text-lg font-bold text-gray-900">{stats.pendingCount}</div>
-          <div className="text-xs text-gray-400">{fmt(stats.pendingValue)}</div>
+          {!isFieldRole && <div className="text-xs text-gray-400">{fmt(stats.pendingValue)}</div>}
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -94,7 +99,7 @@ export function ProjectsClient({
             <span className="text-xs font-medium text-gray-500">Active</span>
           </div>
           <div className="text-lg font-bold text-gray-900">{stats.activeCount}</div>
-          <div className="text-xs text-gray-400">{fmt(stats.activeValue)}</div>
+          {!isFieldRole && <div className="text-xs text-gray-400">{fmt(stats.activeValue)}</div>}
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -102,7 +107,7 @@ export function ProjectsClient({
             <span className="text-xs font-medium text-gray-500">Delivered</span>
           </div>
           <div className="text-lg font-bold text-gray-900">{stats.deliveredCount}</div>
-          <div className="text-xs text-gray-400">{fmt(stats.deliveredValue)}</div>
+          {!isFieldRole && <div className="text-xs text-gray-400">{fmt(stats.deliveredValue)}</div>}
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -110,7 +115,7 @@ export function ProjectsClient({
             <span className="text-xs font-medium text-gray-500">Closed</span>
           </div>
           <div className="text-lg font-bold text-gray-900">{stats.closedCount}</div>
-          <div className="text-xs text-gray-400">{fmt(stats.closedValue)}</div>
+          {!isFieldRole && <div className="text-xs text-gray-400">{fmt(stats.closedValue)}</div>}
         </div>
       </div>
 
@@ -159,21 +164,25 @@ export function ProjectsClient({
               <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">
                 Status
               </th>
-              <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
-                Contract
-              </th>
-              <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
-                Invoiced
-              </th>
-              <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
-                Paid
-              </th>
+              {!isFieldRole && (
+                <>
+                  <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
+                    Contract
+                  </th>
+                  <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
+                    Invoiced
+                  </th>
+                  <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">
+                    Paid
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-gray-400 text-sm">
+                <td colSpan={isFieldRole ? 4 : 7} className="text-center py-12 text-gray-400 text-sm">
                   <FolderOpen size={24} className="mx-auto mb-2 opacity-50" />
                   No projects found.
                 </td>
@@ -207,17 +216,21 @@ export function ProjectsClient({
                       {badge.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-800 text-right font-medium">
-                    {fmt(p.contractValue)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 text-right">
-                    {fmt(p.totalInvoiced)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    <span className={p.totalPaid > 0 ? "text-emerald-600 font-medium" : "text-gray-400"}>
-                      {fmt(p.totalPaid)}
-                    </span>
-                  </td>
+                  {!isFieldRole && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-800 text-right font-medium">
+                        {fmt(p.contractValue)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500 text-right">
+                        {fmt(p.totalInvoiced)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        <span className={p.totalPaid > 0 ? "text-emerald-600 font-medium" : "text-gray-400"}>
+                          {fmt(p.totalPaid)}
+                        </span>
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}

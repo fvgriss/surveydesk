@@ -19,10 +19,15 @@ export default async function SchedulePage({
   if (!tenant) redirect("/login");
   const tid = tenant.tenantId;
   const isFieldRole = FIELD_ROLES.includes(tenant.role);
+  const isCrewChief = tenant.role === "crew_chief";
 
   const params = await searchParams;
   const defaultView = isFieldRole ? "today" : "week";
-  const validViews = isFieldRole ? ["today"] : ["week", "month", "map", "today"];
+  const validViews = isCrewChief
+    ? ["today", "week"]
+    : isFieldRole
+      ? ["today"]
+      : ["week", "month", "map", "today"];
   const view = (validViews.includes(params.view || "") ? params.view : defaultView) as ViewMode;
   const refDate = params.date ? new Date(params.date + "T12:00:00") : new Date();
 

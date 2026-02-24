@@ -51,6 +51,8 @@ const FIELD_ROLES = ["crew_chief", "instrument_person"];
 
 export function ScheduleClient({ days, crews, visits: initialVisits, unscheduledVisits, unscheduledProjects, initialView, currentDate, role = "owner" }: ScheduleClientProps) {
   const isFieldRole = FIELD_ROLES.includes(role);
+  const isCrewChief = role === "crew_chief";
+  const isInstrumentPerson = role === "instrument_person";
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
@@ -300,8 +302,8 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
         </div>
       </div>
 
-      {/* Navigation + View Toggle (admin only) */}
-      {!isFieldRole && (
+      {/* Navigation + View Toggle */}
+      {!isInstrumentPerson && (
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <button
@@ -336,33 +338,48 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
               <ClipboardList size={14} />
               Today
             </button>
-            <button
-              onClick={() => switchView("week")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <Grid3X3 size={14} />
-              Week
-            </button>
-            <button
-              onClick={() => switchView("month")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <Calendar size={14} />
-              Month
-            </button>
-            <button
-              onClick={() => switchView("map")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                viewMode === "map" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <Map size={14} />
-              Map
-            </button>
+            {!isFieldRole && (
+              <>
+                <button
+                  onClick={() => switchView("week")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <Grid3X3 size={14} />
+                  Week
+                </button>
+                <button
+                  onClick={() => switchView("month")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === "month" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <Calendar size={14} />
+                  Month
+                </button>
+                <button
+                  onClick={() => switchView("map")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === "map" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <Map size={14} />
+                  Map
+                </button>
+              </>
+            )}
+            {isCrewChief && (
+              <button
+                onClick={() => switchView("week")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === "week" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Grid3X3 size={14} />
+                Week
+              </button>
+            )}
           </div>
         </div>
       )}
