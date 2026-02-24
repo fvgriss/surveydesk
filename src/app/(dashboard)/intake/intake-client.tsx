@@ -64,6 +64,8 @@ import {
   LEAD_STATUS_COLORS,
   CALL_OUTCOME_COLORS,
   DEFAULT_BADGE,
+  LEAD_SOURCE_LABELS,
+  LEAD_SOURCE_COLORS,
 } from "@/lib/constants";
 
 const statusColor: Record<string, string> = { ...LEAD_STATUS_COLORS, ...CALL_OUTCOME_COLORS };
@@ -274,8 +276,13 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
   const [emailSyncResult, setEmailSyncResult] = useState<string | null>(null);
   const [transcriptExpanded, setTranscriptExpanded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
 
-  const filteredLeads = statusFilter === "all" ? leads : leads.filter((l) => l.status === statusFilter);
+  const filteredLeads = leads.filter((l) => {
+    if (statusFilter !== "all" && l.status !== statusFilter) return false;
+    if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
+    return true;
+  });
 
   function handleLeadStatusChange(leadId: string, newStatus: string) {
     setLeads((prev) =>
@@ -502,6 +509,29 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
               );
             })}
           </div>
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide mr-1">Source:</span>
+            {[{ value: "all", label: "All" }, ...Object.entries(LEAD_SOURCE_LABELS).map(([value, label]) => ({ value, label }))].map((opt) => {
+              const count = opt.value === "all" ? leads.length : leads.filter((l) => l.source === opt.value).length;
+              if (opt.value !== "all" && count === 0) return null;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setSourceFilter(opt.value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    sourceFilter === opt.value
+                      ? opt.value === "all"
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : LEAD_SOURCE_COLORS[opt.value] || "bg-gray-100 text-gray-700 border-gray-300"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {opt.label}
+                  <span className="ml-1 text-[10px] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
         <div className="grid grid-cols-5 gap-4">
           <div className="col-span-2 space-y-1">
             {filteredLeads.map((lead) => (
@@ -520,6 +550,9 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
                   </Badge>
                   <Badge className={statusColor[lead.status] || "bg-gray-50 text-gray-600 border-gray-200"}>
                     {lead.status.replace("_", " ")}
+                  </Badge>
+                  <Badge className={LEAD_SOURCE_COLORS[lead.source] || "bg-gray-50 text-gray-600 border-gray-200"}>
+                    {LEAD_SOURCE_LABELS[lead.source] || lead.source.replace("_", " ")}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">

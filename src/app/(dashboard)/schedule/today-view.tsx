@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Clock, Phone, FileText, ChevronRight, Users } from "lucide-react";
+import { MapPin, Clock, Phone, FileText, ChevronRight, Users, Pencil } from "lucide-react";
 import { type Visit } from "./visit-card";
 
 type Crew = { id: string; name: string; chiefName: string | null };
@@ -36,6 +36,9 @@ const STATUS_OPTIONS = [
 export function TodayView({ visits, crews }: { visits: Visit[]; crews: Crew[] }) {
   const router = useRouter();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const todayVisits = visits.filter((v) => v.scheduledDate === today);
@@ -81,6 +84,36 @@ export function TodayView({ visits, crews }: { visits: Visit[]; crews: Crew[] })
       console.error("Status update failed:", err);
     } finally {
       setUpdatingId(null);
+    }
+  }
+
+  async function handleSaveNotes(visitId: string) {
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/schedule/field-visits/${visitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fieldNotes: notesDraft }),
+      });
+      if (res.ok) router.refresh();
+    } catch (err) {
+      console.error("Save notes failed:", err);
+    } finally {
+      setSavingNotes(false);
+      setEditingNotes(null);
+    }
+  }
+
+  async function handleUtilityLocateChange(visitId: string, newStatus: string) {
+    try {
+      await fetch(`/api/schedule/field-visits/${visitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ utilityLocateStatus: newStatus }),
+      });
+      router.refresh();
+    } catch (err) {
+      console.error("Utility locate update failed:", err);
     }
   }
 
@@ -176,6 +209,74 @@ export function TodayView({ visits, crews }: { visits: Visit[]; crews: Crew[] })
                           </p>
                         </div>
                       )}
+
+                      {/* Actual arrival/departure times */}
+                      {(visit.actualArrival || visit.actualDeparture) && (
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                          {visit.actualArrival && (
+                            <span>Arrived: {new Date(visit.actualArrival).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                          )}
+                          {visit.actualDeparture && (
+                            <span>Departed: {new Date(visit.actualDeparture).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Utility Locate Status */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs text-gray-500">Utility Locate:</span>
+                        <select
+                          value={visit.utilityLocateStatus || ""}
+                          onChange={(e) => handleUtilityLocateChange(visit.id, e.target.value)}
+                          className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Not started</option>
+                          <option value="requested">Requested</option>
+                          <option value="marked">Marked</option>
+                          <option value="clear">Clear (no utilities)</option>
+                          <option value="not_required">Not Required</option>
+                        </select>
+                      </div>
+
+                      {/* Field Notes */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-500">Field Notes</span>
+                          {editingNotes !== visit.id && (
+                            <button
+                              onClick={() => { setEditingNotes(visit.id); setNotesDraft(visit.fieldNotes || ""); }}
+                              className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800"
+                            >
+                              <Pencil size={10} />
+                              {visit.fieldNotes ? "Edit" : "Add note"}
+                            </button>
+                          )}
+                        </div>
+                        {editingNotes === visit.id ? (
+                          <div>
+                            <textarea
+                              value={notesDraft}
+                              onChange={(e) => setNotesDraft(e.target.value)}
+                              rows={3}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              placeholder="Field conditions, observations, issues..."
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-2 mt-1">
+                              <button onClick={() => setEditingNotes(null)} className="text-xs text-gray-500">Cancel</button>
+                              <button
+                                onClick={() => handleSaveNotes(visit.id)}
+                                disabled={savingNotes}
+                                className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                {savingNotes ? "Saving..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : visit.fieldNotes ? (
+                          <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">{visit.fieldNotes}</p>
+                        ) : null}
+                      </div>
 
                       {/* Status progression button */}
                       {nextStatus && (

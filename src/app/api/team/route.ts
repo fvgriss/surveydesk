@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Generate password-set link
-    const { data: linkData } =
+    const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "recovery",
         email,
@@ -132,6 +132,10 @@ export async function POST(req: NextRequest) {
           redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "https://surveydesk.app"}/auth/callback?next=/dashboard`,
         },
       });
+
+    if (linkError) {
+      console.error("[team-invite] generateLink error:", linkError);
+    }
 
     // 4. Send invite email via Resend
     if (linkData?.properties?.action_link && process.env.RESEND_API_KEY) {
@@ -145,7 +149,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
+        const { data: emailData, error: emailError } = await resend.emails.send({
           from: "SurveyDesk <team@updates.surveydesk.app>",
           to: email,
           subject: `You've been invited to ${firmName}`,
@@ -166,9 +170,16 @@ export async function POST(req: NextRequest) {
             </div>
           `,
         });
+        if (emailError) {
+          console.error("[team-invite] Resend API error:", emailError);
+        } else {
+          console.log("[team-invite] Invite email sent:", emailData?.id);
+        }
       } catch (emailErr) {
-        console.warn("[team-invite] Invite email failed:", emailErr);
+        console.error("[team-invite] Invite email failed:", emailErr);
       }
+    } else {
+      console.warn("[team-invite] Skipped email — action_link:", !!linkData?.properties?.action_link, "RESEND_API_KEY:", !!process.env.RESEND_API_KEY);
     }
 
     return NextResponse.json(newUser, { status: 201 });

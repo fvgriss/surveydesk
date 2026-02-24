@@ -18,6 +18,8 @@ import {
   Save,
   Plus,
   Download,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { InvoiceForm } from "./invoice-form";
 import { PaymentForm } from "./payment-form";
@@ -43,6 +45,13 @@ type TaskItem = {
   completedAt?: string;
 };
 
+type DocumentData = {
+  name: string;
+  type: string;
+  uploadedAt: string;
+  storagePath: string;
+};
+
 type ProjectData = {
   id: string;
   propertyAddress: string;
@@ -58,6 +67,7 @@ type ProjectData = {
   startedAt: string | null;
   fieldCompletedAt: string | null;
   deliveredAt: string | null;
+  documents: DocumentData[];
 };
 
 type ContactData = {
@@ -85,6 +95,10 @@ type VisitData = {
   status: string;
   crewName: string | null;
   crewChiefName: string | null;
+  fieldNotes: string | null;
+  utilityLocateStatus: string | null;
+  actualArrival: string | null;
+  actualDeparture: string | null;
 };
 
 const fmt = (v: number) =>
@@ -119,6 +133,60 @@ export function ProjectDetailClient({
   const [saving, setSaving] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<InvoiceData | null>(null);
+  const [documents, setDocuments] = useState<DocumentData[]>(initialProject.documents);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleDocumentUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/projects/${project.id}/documents`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDocumentDownload(index: number) {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/documents?index=${index}`);
+      if (res.ok) {
+        const data = await res.json();
+        window.open(data.url, "_blank");
+      }
+    } catch (err) {
+      console.error("Download failed:", err);
+    }
+  }
+
+  async function handleDocumentDelete(index: number) {
+    if (!confirm("Delete this document?")) return;
+    try {
+      const res = await fetch(`/api/projects/${project.id}/documents`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents);
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  }
 
   const completedTasks = project.taskChecklist.filter((t) => t.completed).length;
   const totalTasks = project.taskChecklist.length;
@@ -310,6 +378,22 @@ export function ProjectDetailClient({
                           <span className="text-red-500">No crew assigned</span>
                         )}
                       </div>
+                      {(v.actualArrival || v.actualDeparture || v.fieldNotes || v.utilityLocateStatus) && (
+                        <div className="mt-1 space-y-0.5">
+                          {v.actualArrival && (
+                            <div className="text-[10px] text-gray-400">
+                              Arrived {new Date(v.actualArrival).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                              {v.actualDeparture && ` — Departed ${new Date(v.actualDeparture).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
+                            </div>
+                          )}
+                          {v.utilityLocateStatus && (
+                            <div className="text-[10px] text-gray-400">Utilities: {v.utilityLocateStatus}</div>
+                          )}
+                          {v.fieldNotes && (
+                            <div className="text-[10px] text-gray-500 italic truncate max-w-xs">Notes: {v.fieldNotes}</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
@@ -318,6 +402,64 @@ export function ProjectDetailClient({
                     >
                       {v.status}
                     </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Documents */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                <FileText size={14} className="text-gray-400" />
+                Documents
+              </h2>
+              <label className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                <Upload size={12} />
+                {uploading ? "Uploading..." : "Upload"}
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleDocumentUpload}
+                  disabled={uploading}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf,.tif,.tiff,.csv"
+                />
+              </label>
+            </div>
+            {documents.length === 0 ? (
+              <p className="text-sm text-gray-400">No documents uploaded yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc, idx) => (
+                  <div key={idx} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <button
+                        onClick={() => handleDocumentDownload(idx)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block text-left"
+                      >
+                        {doc.name}
+                      </button>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(doc.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDocumentDownload(idx)}
+                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDocumentDelete(idx)}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -68,6 +68,10 @@ export default async function ProjectDetailPage({
       status: fieldVisits.status,
       crewName: crews.name,
       crewChiefName: crews.chiefName,
+      fieldNotes: fieldVisits.fieldNotes,
+      utilityLocateStatus: fieldVisits.utilityLocateStatus,
+      actualArrival: fieldVisits.actualArrival,
+      actualDeparture: fieldVisits.actualDeparture,
     })
     .from(fieldVisits)
     .leftJoin(crews, eq(fieldVisits.crewId, crews.id))
@@ -104,6 +108,12 @@ export default async function ProjectDetailPage({
         startedAt: project.startedAt?.toISOString() || null,
         fieldCompletedAt: project.fieldCompletedAt?.toISOString() || null,
         deliveredAt: project.deliveredAt?.toISOString() || null,
+        documents: ((project.documents || []) as unknown as Array<{
+          name: string;
+          type: string;
+          uploadedAt: string;
+          storagePath: string;
+        }>),
       }}
       contact={{
         name: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
@@ -130,6 +140,10 @@ export default async function ProjectDetailPage({
           status: v.status,
           crewName: v.crewName,
           crewChiefName: v.crewChiefName,
+          fieldNotes: v.fieldNotes,
+          utilityLocateStatus: v.utilityLocateStatus,
+          actualArrival: v.actualArrival?.toISOString() || null,
+          actualDeparture: v.actualDeparture?.toISOString() || null,
         }))}
     />
   );

@@ -15,6 +15,10 @@ export type Visit = {
   crewId: string | null;
   crewName: string | null;
   crewChiefName: string | null;
+  fieldNotes: string | null;
+  utilityLocateStatus: string | null;
+  actualArrival: string | null;
+  actualDeparture: string | null;
 };
 
 const surveyLabel: Record<string, string> = {

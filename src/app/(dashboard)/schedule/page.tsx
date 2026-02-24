@@ -69,6 +69,10 @@ export default async function SchedulePage({
     crewId: fieldVisits.crewId,
     crewName: crews.name,
     crewChiefName: crews.chiefName,
+    fieldNotes: fieldVisits.fieldNotes,
+    utilityLocateStatus: fieldVisits.utilityLocateStatus,
+    actualArrival: fieldVisits.actualArrival,
+    actualDeparture: fieldVisits.actualDeparture,
   };
 
   // Query scheduled visits (real dates only, exclude sentinel 1970-01-01)
@@ -91,21 +95,7 @@ export default async function SchedulePage({
   // Query unscheduled visits (sentinel date 1970-01-01 = "schedule later")
   // Use leftJoin for crews since crewId can be null on unscheduled visits
   const unscheduledVisitRows = await db
-    .select({
-      id: fieldVisits.id,
-      scheduledDate: fieldVisits.scheduledDate,
-      timeWindow: fieldVisits.timeWindow,
-      status: fieldVisits.status,
-      estimatedDurationHours: fieldVisits.estimatedDurationHours,
-      accessNotes: fieldVisits.accessNotes,
-      projectAddress: projects.propertyAddress,
-      surveyType: projects.surveyType,
-      contactFirstName: contacts.firstName,
-      contactLastName: contacts.lastName,
-      crewId: fieldVisits.crewId,
-      crewName: crews.name,
-      crewChiefName: crews.chiefName,
-    })
+    .select(visitSelect)
     .from(fieldVisits)
     .innerJoin(projects, eq(fieldVisits.projectId, projects.id))
     .innerJoin(contacts, eq(projects.contactId, contacts.id))
@@ -192,6 +182,10 @@ export default async function SchedulePage({
       crewId: v.crewId,
       crewName: v.crewName,
       crewChiefName: v.crewChiefName,
+      fieldNotes: v.fieldNotes,
+      utilityLocateStatus: v.utilityLocateStatus,
+      actualArrival: v.actualArrival?.toISOString() || null,
+      actualDeparture: v.actualDeparture?.toISOString() || null,
     };
   }
 
