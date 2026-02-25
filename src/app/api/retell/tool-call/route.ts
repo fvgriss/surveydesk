@@ -406,7 +406,9 @@ async function qualifyProspect(
     console.log(`[qualify_prospect] Created prospect lead: ${newLead.id} — ${firmName} (${args.interest_level || "unknown"})`);
 
     // Send branded follow-up email with extracted call data (non-blocking)
-    if (args.contact_email) {
+    // Only for the SurveyDesk sales tenant — not for surveying firms using the product
+    const salesTenantId = process.env.SURVEYDESK_SALES_TENANT_ID;
+    if (args.contact_email && salesTenantId && tenantId === salesTenantId) {
       const { sendProspectFollowUp } = await import(
         "@/lib/services/prospect-follow-up"
       );

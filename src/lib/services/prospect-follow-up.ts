@@ -75,6 +75,7 @@ export async function sendProspectFollowUp(
     await resend.emails.send({
       from: "SurveyDesk <proposals@updates.surveydesk.app>",
       to: email,
+      cc: "vance@terrainplot.com",
       subject: `${firstName}, let's get ${callData.firmName} set up on SurveyDesk`,
       html: emailHtml,
     });
