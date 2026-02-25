@@ -9,7 +9,6 @@ import { MonthView } from "./month-view";
 import { MapView } from "./map-view";
 import { TodayView } from "./today-view";
 import { AddVisitModal } from "./add-visit-modal";
-import { WeatherWidget } from "./weather-widget";
 
 type Crew = { id: string; name: string; chiefName: string | null };
 type ViewMode = "week" | "month" | "map" | "today";
@@ -383,9 +382,6 @@ export function ScheduleClient({ days, crews, visits: initialVisits, unscheduled
           </div>
         </div>
       )}
-
-      {/* Weather widget */}
-      {!isFieldRole && <WeatherWidget days={days} />}
 
       {/* Needs Scheduling panel — admin only */}
       {!isFieldRole && <div
