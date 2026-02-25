@@ -194,6 +194,21 @@ export function ProjectDetailClient({
     }
   }
 
+  async function handleVoidInvoice(invoiceId: string) {
+    if (!window.confirm("Void this invoice? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/void`, { method: "POST" });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to void invoice");
+      }
+    } catch {
+      alert("Network error");
+    }
+  }
+
   const completedTasks = project.taskChecklist.filter((t) => t.completed).length;
   const totalTasks = project.taskChecklist.length;
   const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -521,7 +536,7 @@ export function ProjectDetailClient({
                   {invoices.map((inv) => (
                     <tr
                       key={inv.id}
-                      className="border-t border-gray-100"
+                      className={`border-t border-gray-100 ${inv.status === "void" ? "opacity-50" : ""}`}
                     >
                       <td className="py-2 text-sm font-medium text-gray-800">
                         {inv.invoiceNumber}
@@ -556,12 +571,20 @@ export function ProjectDetailClient({
                           <Download size={14} />
                         </a>
                         {!isFieldRole && ["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
-                          <button
-                            onClick={() => setPaymentInvoice(inv)}
-                            className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
-                          >
-                            Record Payment
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setPaymentInvoice(inv)}
+                              className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
+                            >
+                              Record Payment
+                            </button>
+                            <button
+                              onClick={() => handleVoidInvoice(inv.id)}
+                              className="inline-flex px-2 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                            >
+                              Void
+                            </button>
+                          </>
                         )}
                       </td>
                     </tr>

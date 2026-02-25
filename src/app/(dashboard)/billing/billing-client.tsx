@@ -54,6 +54,21 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
   const [pickerSearch, setPickerSearch] = useState("");
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
 
+  async function handleVoidInvoice(invoiceId: string) {
+    if (!window.confirm("Void this invoice? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/void`, { method: "POST" });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to void invoice");
+      }
+    } catch {
+      alert("Network error");
+    }
+  }
+
   const filteredProjects = (projects || []).filter(
     (p) =>
       !pickerSearch ||
@@ -158,7 +173,7 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
               <tr
                 key={inv.id}
                 onClick={() => inv.projectId && router.push(`/projects/${inv.projectId}`)}
-                className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                className={`border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${inv.status === "void" ? "opacity-50" : ""}`}
               >
                 <td className="px-4 py-3 text-sm font-mono text-gray-600">{inv.invoiceNumber}</td>
                 <td className="px-4 py-3">
@@ -173,12 +188,20 @@ export function BillingClient({ invoices, totals, projects }: { invoices: Invoic
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
                     {["sent", "overdue", "partially_paid", "viewed"].includes(inv.status) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setPaymentInvoice(inv); }}
-                        className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
-                      >
-                        Record Payment
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setPaymentInvoice(inv); }}
+                          className="inline-flex px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
+                        >
+                          Record Payment
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleVoidInvoice(inv.id); }}
+                          className="inline-flex px-2 py-0.5 text-[10px] font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                        >
+                          Void
+                        </button>
+                      </>
                     )}
                     <a
                       href={`/api/invoices/${inv.id}/pdf`}

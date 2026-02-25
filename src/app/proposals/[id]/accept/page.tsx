@@ -44,7 +44,7 @@ export default async function AcceptProposalPage({
   if (
     !proposal ||
     proposal.acceptanceToken !== token ||
-    (proposal.status !== "sent" && proposal.status !== "viewed" && proposal.status !== "accepted")
+    (proposal.status !== "sent" && proposal.status !== "viewed" && proposal.status !== "accepted" && proposal.status !== "declined")
   ) {
     notFound();
   }
@@ -315,6 +315,18 @@ export default async function AcceptProposalPage({
                   ? formatDate(proposal.acceptedAt.toISOString())
                   : "recently"}{" "}
                 {proposal.acceptedByName ? `by ${proposal.acceptedByName}` : ""}.
+              </p>
+            </div>
+          ) : proposal.status === "declined" ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-red-900 mb-2">
+                Proposal Declined
+              </h3>
+              <p className="text-sm text-red-700">
+                This proposal was declined on{" "}
+                {proposal.declinedAt
+                  ? formatDate(proposal.declinedAt.toISOString())
+                  : "recently"}.
               </p>
             </div>
           ) : (

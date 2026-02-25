@@ -265,6 +265,20 @@ export default function ProposalForm({
     }
   };
 
+  const handleDeleteDraft = async () => {
+    if (!window.confirm("Are you sure you want to delete this draft proposal?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/proposals/${initialProposal!.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      router.push("/proposals");
+    } catch {
+      alert("Failed to delete proposal");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectedContact = contacts.find((c) => c.id === formData.contactId);
 
   return (
@@ -571,7 +585,19 @@ export default function ProposalForm({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-between">
+          {initialProposal?.id ? (
+            <button
+              onClick={handleDeleteDraft}
+              disabled={loading}
+              className="px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 disabled:opacity-50"
+            >
+              Delete Draft
+            </button>
+          ) : (
+            <div />
+          )}
+          <div className="flex gap-3">
           <Link
             href="/proposals"
             className="px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
@@ -592,6 +618,7 @@ export default function ProposalForm({
           >
             Save &amp; Send
           </button>
+          </div>
         </div>
       </div>
     </div>

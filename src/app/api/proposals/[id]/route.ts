@@ -120,3 +120,44 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const tenant = await getCurrentTenant();
+    if (!tenant) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const [proposal] = await db
+      .select({ id: proposals.id, status: proposals.status })
+      .from(proposals)
+      .where(and(eq(proposals.id, id), eq(proposals.tenantId, tenant.tenantId)))
+      .limit(1);
+
+    if (!proposal) {
+      return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+    }
+
+    if (proposal.status !== "draft") {
+      return NextResponse.json(
+        { error: "Can only delete draft proposals" },
+        { status: 400 }
+      );
+    }
+
+    await db.delete(proposals).where(eq(proposals.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting proposal:", error);
+    return NextResponse.json(
+      { error: "Failed to delete proposal" },
+      { status: 500 }
+    );
+  }
+}

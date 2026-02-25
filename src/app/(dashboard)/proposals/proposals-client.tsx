@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Send, Eye, CheckCircle2, XCircle, MoreVertical, FileText, TrendingUp } from "lucide-react";
+import { Plus, Send, Eye, CheckCircle2, XCircle, MoreVertical, FileText, TrendingUp, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -37,6 +37,18 @@ function formatDate(iso: string | null) {
 
 export function ProposalsClient({ proposals }: { proposals: Proposal[] }) {
   const router = useRouter();
+
+  async function handleDeleteProposal(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (!window.confirm("Delete this draft proposal?")) return;
+    try {
+      const res = await fetch(`/api/proposals/${id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
+      else alert("Failed to delete proposal");
+    } catch {
+      alert("Network error");
+    }
+  }
   const drafts = proposals.filter((p) => p.status === "draft");
   const sent = proposals.filter((p) => p.status === "sent" || p.status === "viewed");
   const accepted = proposals.filter((p) => p.status === "accepted");
@@ -77,7 +89,7 @@ export function ProposalsClient({ proposals }: { proposals: Proposal[] }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {["Client", "Property", "Type", "Total", "Status", "Sent"].map((h) => (
+              {["Client", "Property", "Type", "Total", "Status", "Sent", ""].map((h) => (
                 <th key={h} className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wider px-4 py-3">{h}</th>
               ))}
             </tr>
@@ -98,6 +110,17 @@ export function ProposalsClient({ proposals }: { proposals: Proposal[] }) {
                     <Badge className={statusColor[prop.status] || ""}>{prop.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(prop.sentAt)}</td>
+                  <td className="px-4 py-3">
+                    {prop.status === "draft" && (
+                      <button
+                        onClick={(e) => handleDeleteProposal(e, prop.id)}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                        title="Delete draft"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
             ))}
           </tbody>

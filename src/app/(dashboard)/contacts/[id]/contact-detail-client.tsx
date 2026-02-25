@@ -165,6 +165,28 @@ export function ContactDetailClient({
     setEditing(false);
   }
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<{ error: string; blockers?: string[] } | null>(null);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        router.push("/contacts");
+      } else {
+        setDeleteError(data);
+      }
+    } catch {
+      setDeleteError({ error: "Network error" });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const displayName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.companyName || "Unnamed";
   const badge = getTypeBadge(contact.type);
 
@@ -210,13 +232,22 @@ export function ContactDetailClient({
         </div>
         <div className="flex items-center gap-2">
           {!editing ? (
-            <button
-              onClick={() => setEditing(true)}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-            >
-              <Pencil size={13} />
-              Edit
-            </button>
+            <>
+              <button
+                onClick={() => { setShowDeleteModal(true); setDeleteError(null); }}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 size={13} />
+                Delete
+              </button>
+              <button
+                onClick={() => setEditing(true)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5"
+              >
+                <Pencil size={13} />
+                Edit
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -552,6 +583,45 @@ export function ContactDetailClient({
           </div>
         </div>
       </div>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowDeleteModal(false); setDeleteError(null); }} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Contact</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete <strong>{displayName}</strong>? This cannot be undone.
+            </p>
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm font-medium text-red-800 mb-1">{deleteError.error}</p>
+                {deleteError.blockers && (
+                  <ul className="text-xs text-red-700 list-disc pl-4">
+                    {deleteError.blockers.map((b, i) => <li key={i}>{b}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteError(null); }}
+                className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+              {!deleteError?.blockers && (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Delete Contact"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

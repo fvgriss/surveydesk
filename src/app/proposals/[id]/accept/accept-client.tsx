@@ -21,6 +21,10 @@ export default function AcceptClientComponent({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declining, setDeclining] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +78,42 @@ export default function AcceptClientComponent({
       setIsLoading(false);
     }
   };
+
+  const handleDecline = async () => {
+    setDeclining(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/proposals/${proposalId}/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, reason: declineReason || undefined }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to decline proposal");
+      }
+      setDeclined(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setDeclining(false);
+    }
+  };
+
+  if (declined) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-red-900 mb-2">
+            Proposal Declined
+          </h3>
+          <p className="text-sm text-red-700">
+            This proposal has been declined. Thank you for letting us know.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -175,9 +215,48 @@ export default function AcceptClientComponent({
       </button>
 
       <p className="text-xs text-gray-500 text-center">
-        By clicking "Accept Proposal", you agree to the terms and conditions
+        By clicking &quot;Accept Proposal&quot;, you agree to the terms and conditions
         stated above and authorize this surveying work to proceed.
       </p>
+
+      <div className="text-center pt-4 border-t border-gray-100 mt-4">
+        {!showDecline ? (
+          <button
+            type="button"
+            onClick={() => setShowDecline(true)}
+            className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+          >
+            Decline this proposal
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Reason for declining (optional)"
+              rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
+            />
+            <div className="flex gap-2 justify-center">
+              <button
+                type="button"
+                onClick={() => setShowDecline(false)}
+                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDecline}
+                disabled={declining}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {declining ? "Processing..." : "Decline Proposal"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </form>
   );
 }

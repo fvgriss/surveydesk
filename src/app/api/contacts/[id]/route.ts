@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { contacts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { contacts, projects, invoices, leads, proposals } from "@/db/schema";
+import { eq, and, ne, notInArray } from "drizzle-orm";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 
 // GET /api/contacts/[id]
@@ -117,19 +117,58 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const tid = tenant.tenantId;
 
     const [existing] = await db
-      .select()
+      .select({ id: contacts.id })
       .from(contacts)
-      .where(and(eq(contacts.id, id), eq(contacts.tenantId, tenant.tenantId)))
+      .where(and(eq(contacts.id, id), eq(contacts.tenantId, tid)))
       .limit(1);
 
     if (!existing)
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
 
+    // Check for blocking references
+    const blockers: string[] = [];
+
+    const activeProjects = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.contactId, id), eq(projects.tenantId, tid), ne(projects.status, "closed")));
+    if (activeProjects.length > 0)
+      blockers.push(`${activeProjects.length} active project(s)`);
+
+    const unpaidInvoices = await db
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(and(eq(invoices.contactId, id), eq(invoices.tenantId, tid), notInArray(invoices.status, ["paid", "void", "draft"])));
+    if (unpaidInvoices.length > 0)
+      blockers.push(`${unpaidInvoices.length} unpaid invoice(s)`);
+
+    const activeLeads = await db
+      .select({ id: leads.id })
+      .from(leads)
+      .where(and(eq(leads.contactId, id), eq(leads.tenantId, tid), notInArray(leads.status, ["lost", "expired"])));
+    if (activeLeads.length > 0)
+      blockers.push(`${activeLeads.length} active lead(s)`);
+
+    const activeProposals = await db
+      .select({ id: proposals.id })
+      .from(proposals)
+      .where(and(eq(proposals.contactId, id), eq(proposals.tenantId, tid), notInArray(proposals.status, ["declined", "expired"])));
+    if (activeProposals.length > 0)
+      blockers.push(`${activeProposals.length} active proposal(s)`);
+
+    if (blockers.length > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete contact with active references", blockers },
+        { status: 409 }
+      );
+    }
+
     await db
       .delete(contacts)
-      .where(and(eq(contacts.id, id), eq(contacts.tenantId, tenant.tenantId)));
+      .where(and(eq(contacts.id, id), eq(contacts.tenantId, tid)));
 
     return NextResponse.json({ success: true });
   } catch (error) {
