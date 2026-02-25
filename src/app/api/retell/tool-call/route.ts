@@ -405,6 +405,23 @@ async function qualifyProspect(
 
     console.log(`[qualify_prospect] Created prospect lead: ${newLead.id} — ${firmName} (${args.interest_level || "unknown"})`);
 
+    // Send branded follow-up email with extracted call data (non-blocking)
+    if (args.contact_email) {
+      const { sendProspectFollowUp } = await import(
+        "@/lib/services/prospect-follow-up"
+      );
+      sendProspectFollowUp(tenantId, newLead.id, contactId!, {
+        firmName,
+        contactName,
+        firmSize: args.firm_size || null,
+        currentTools: args.current_tools || null,
+        painPoints: args.pain_points || null,
+        interestLevel: args.interest_level || null,
+      }).catch((err) =>
+        console.error("[qualify_prospect] Follow-up error:", err)
+      );
+    }
+
     return `I've saved ${contactName}'s information for ${firmName}. Someone from our team will follow up shortly.`;
   } catch (error) {
     console.error("[qualify_prospect] Error:", error);
