@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   Building2,
+  Megaphone,
   ArrowLeft,
   LogOut,
   Shield,
@@ -14,6 +15,7 @@ import {
 const ADMIN_NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/tenants", label: "Tenants", icon: Building2 },
+  { href: "/admin/prospects", label: "Sales", icon: Megaphone },
 ];
 
 export function AdminShell({

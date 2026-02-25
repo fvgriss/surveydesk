@@ -15,6 +15,13 @@
       "when": 1771972762583,
       "tag": "0001_tense_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772036209279,
+      "tag": "0002_tired_killmonger",
+      "breakpoints": true
     }
   ]
 }

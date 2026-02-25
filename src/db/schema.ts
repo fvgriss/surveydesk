@@ -158,6 +158,14 @@ export const callDirectionEnum = pgEnum("call_direction", [
 
 export const urgencyEnum = pgEnum("urgency", ["low", "medium", "high"]);
 
+export const prospectStatusEnum = pgEnum("prospect_status", [
+  "new",
+  "contacted",
+  "booked",
+  "converted",
+  "lost",
+]);
+
 // ============================================================
 // TENANTS (firms)
 // ============================================================
@@ -887,6 +895,36 @@ export const superAdmins = pgTable(
   (table) => [
     uniqueIndex("super_admins_auth_idx").on(table.authId),
     index("super_admins_email_idx").on(table.email),
+  ]
+);
+
+// ============================================================
+// PROSPECTS (SurveyDesk sales leads — platform-level, no tenant)
+// ============================================================
+
+export const prospects = pgTable(
+  "prospects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    firmName: varchar("firm_name", { length: 255 }).notNull(),
+    contactName: varchar("contact_name", { length: 255 }).notNull(),
+    email: varchar("email", { length: 255 }),
+    phone: varchar("phone", { length: 20 }),
+    firmSize: varchar("firm_size", { length: 100 }),
+    currentTools: text("current_tools"),
+    painPoints: text("pain_points"),
+    interestLevel: varchar("interest_level", { length: 20 }),
+    status: prospectStatusEnum("status").notNull().default("new"),
+    notes: text("notes"),
+    followUpSentAt: timestamp("follow_up_sent_at", { withTimezone: true }),
+    smsSentAt: timestamp("sms_sent_at", { withTimezone: true }),
+    callId: varchar("call_id", { length: 100 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("prospects_status_idx").on(table.status),
+    index("prospects_created_idx").on(table.createdAt),
   ]
 );
 

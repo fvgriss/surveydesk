@@ -1,15 +1,34 @@
 import { db } from "@/db";
-import { contacts, leads, tenants } from "@/db/schema";
+import { prospects } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
+import twilio from "twilio";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const BOOKING_URL = "https://calendly.com/vance-terrainplot/intro";
 
-export type ProspectCallData = {
+function getTwilioClient() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
+  if (!sid || !token || !from) return null;
+  return { client: twilio(sid, token), from };
+}
+
+function cleanPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return `+${digits}`;
+}
+
+type Prospect = {
+  id: string;
   firmName: string;
   contactName: string;
+  email: string | null;
+  phone: string | null;
   firmSize: string | null;
   currentTools: string | null;
   painPoints: string | null;
@@ -17,115 +36,118 @@ export type ProspectCallData = {
 };
 
 /**
- * Send a branded follow-up email to a SurveyDesk sales prospect
- * after qualify_prospect creates their lead. Shows the structured
- * data extracted from the AI call as a "look what we captured" moment,
- * then CTA to book a 20-min onboarding call.
+ * Send a branded follow-up email + SMS to a SurveyDesk sales prospect.
+ * Shows the structured data extracted from the AI call, then CTA to
+ * book a 20-min onboarding call.
  *
- * Non-blocking — called with .catch(console.error) from the tool-call handler.
+ * Non-blocking — called with .catch() from the tool-call handler.
  */
-export async function sendProspectFollowUp(
-  tenantId: string,
-  leadId: string,
-  contactId: string,
-  callData: ProspectCallData
-): Promise<void> {
-  const [contact] = await db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, contactId))
-    .limit(1);
-
-  const [tenant] = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
-
-  if (!contact || !tenant) {
-    console.error("[prospect-follow-up] Missing data:", {
-      contact: !!contact,
-      tenant: !!tenant,
-    });
+export async function sendProspectFollowUp(prospect: Prospect): Promise<void> {
+  if (!prospect.email) {
+    console.log("[prospect-follow-up] No email, skipping");
     return;
   }
 
-  const email = contact.email;
-  if (!email) {
-    console.log("[prospect-follow-up] No email for contact, skipping");
-    return;
-  }
-
-  const firstName = contact.firstName || "there";
-  const contactName = contact.firstName
-    ? `${contact.firstName}${contact.lastName ? ` ${contact.lastName}` : ""}`
-    : "there";
+  const firstName = prospect.contactName.split(" ")[0] || "there";
 
   const emailHtml = buildFollowUpEmail({
-    tenantName: tenant.name,
-    contactName,
+    contactName: prospect.contactName,
     firstName,
-    callData,
-    tenantPhone: tenant.phone,
-    tenantEmail: tenant.email,
+    firmName: prospect.firmName,
+    firmSize: prospect.firmSize,
+    currentTools: prospect.currentTools,
+    painPoints: prospect.painPoints,
+    interestLevel: prospect.interestLevel,
     bookingUrl: BOOKING_URL,
   });
 
+  // Send email
   try {
     await resend.emails.send({
       from: "SurveyDesk <proposals@updates.surveydesk.app>",
-      to: email,
+      to: prospect.email,
       cc: "vance@terrainplot.com",
-      subject: `${firstName}, let's get ${callData.firmName} set up on SurveyDesk`,
+      subject: `${firstName}, let's get ${prospect.firmName} set up on SurveyDesk`,
       html: emailHtml,
     });
 
-    console.log(`[prospect-follow-up] Follow-up email sent to ${email}`);
-
-    // Move lead to "qualifying" — follow-up sent, awaiting booking
     await db
-      .update(leads)
-      .set({ status: "qualifying", updatedAt: new Date() })
-      .where(eq(leads.id, leadId));
+      .update(prospects)
+      .set({ followUpSentAt: new Date(), updatedAt: new Date() })
+      .where(eq(prospects.id, prospect.id));
+
+    console.log(`[prospect-follow-up] Email sent to ${prospect.email}`);
   } catch (err) {
-    console.error("[prospect-follow-up] Failed to send follow-up email:", err);
+    console.error("[prospect-follow-up] Email failed:", err);
+  }
+
+  // Send SMS
+  if (prospect.phone) {
+    try {
+      const tw = getTwilioClient();
+      if (tw) {
+        await tw.client.messages.create({
+          body: `Hi ${firstName}, this is Vance from SurveyDesk. Thanks for chatting with us about ${prospect.firmName}! I'd love to get you set up with a free 14-day trial. Book a quick 20-min call here: ${BOOKING_URL}`,
+          to: cleanPhone(prospect.phone),
+          from: tw.from,
+        });
+
+        await db
+          .update(prospects)
+          .set({ smsSentAt: new Date(), updatedAt: new Date() })
+          .where(eq(prospects.id, prospect.id));
+
+        console.log(`[prospect-follow-up] SMS sent to ${prospect.phone}`);
+      }
+    } catch (err) {
+      console.error("[prospect-follow-up] SMS failed:", err);
+    }
+  }
+
+  // Update status to contacted
+  try {
+    await db
+      .update(prospects)
+      .set({ status: "contacted", updatedAt: new Date() })
+      .where(eq(prospects.id, prospect.id));
+  } catch (err) {
+    console.error("[prospect-follow-up] Status update failed:", err);
   }
 }
 
 function buildFollowUpEmail(params: {
-  tenantName: string;
   contactName: string;
   firstName: string;
-  callData: ProspectCallData;
-  tenantPhone: string | null;
-  tenantEmail: string | null;
+  firmName: string;
+  firmSize: string | null;
+  currentTools: string | null;
+  painPoints: string | null;
+  interestLevel: string | null;
   bookingUrl: string;
 }): string {
   const {
-    tenantName,
     contactName,
     firstName,
-    callData,
-    tenantPhone,
-    tenantEmail,
+    firmName,
+    firmSize,
+    currentTools,
+    painPoints,
+    interestLevel,
     bookingUrl,
   } = params;
 
-  // Build the extracted-data rows — only show fields that were captured
+  // Build extracted-data rows — only show fields that were captured
   const dataRows: { label: string; value: string }[] = [
-    { label: "Firm", value: callData.firmName },
-    { label: "Contact", value: callData.contactName },
+    { label: "Firm", value: firmName },
+    { label: "Contact", value: contactName },
   ];
-  if (callData.firmSize)
-    dataRows.push({ label: "Team Size", value: callData.firmSize });
-  if (callData.currentTools)
-    dataRows.push({ label: "Current Tools", value: callData.currentTools });
-  if (callData.painPoints)
-    dataRows.push({ label: "Pain Points", value: callData.painPoints });
-  if (callData.interestLevel)
+  if (firmSize) dataRows.push({ label: "Team Size", value: firmSize });
+  if (currentTools) dataRows.push({ label: "Current Tools", value: currentTools });
+  if (painPoints) dataRows.push({ label: "Pain Points", value: painPoints });
+  if (interestLevel)
     dataRows.push({
       label: "Interest",
-      value: callData.interestLevel.charAt(0).toUpperCase() + callData.interestLevel.slice(1),
+      value: interestLevel.charAt(0).toUpperCase() + interestLevel.slice(1),
     });
 
   const dataTableHtml = dataRows
@@ -173,14 +195,14 @@ function buildFollowUpEmail(params: {
 <body>
   <div class="container">
     <div class="header">
-      <div class="company-name">${tenantName}</div>
+      <div class="company-name">SurveyDesk</div>
     </div>
 
     <div class="greeting">Hi ${contactName},</div>
 
     <div class="section">
       <div class="section-content">
-        Thanks for chatting with us about ${callData.firmName}. You just spoke with our AI phone agent — and here's what it captured from your call, automatically:
+        Thanks for chatting with us about ${firmName}. You just spoke with our AI phone agent — and here's what it captured from your call, automatically:
       </div>
     </div>
 
@@ -214,7 +236,7 @@ function buildFollowUpEmail(params: {
 
     <div class="section">
       <div class="section-content">
-        I'd love to spend 20 minutes getting ${callData.firmName} set up so you can see it in action with your own data:
+        I'd love to spend 20 minutes getting ${firmName} set up so you can see it in action with your own data:
       </div>
     </div>
 
@@ -225,7 +247,7 @@ function buildFollowUpEmail(params: {
 
     <div class="section">
       <div class="section-content">
-        If you have any questions in the meantime, just reply to this email${tenantPhone ? ` or call me at ${tenantPhone}` : ""}.
+        If you have any questions in the meantime, just reply to this email or call me at (512) 487-7511.
       </div>
     </div>
 
@@ -237,9 +259,8 @@ function buildFollowUpEmail(params: {
     </div>
 
     <div class="footer">
-      <strong>${tenantName}</strong><br>
-      ${tenantPhone ? `Phone: ${tenantPhone}<br>` : ""}
-      ${tenantEmail ? `Email: ${tenantEmail}<br>` : ""}
+      <strong>SurveyDesk</strong><br>
+      Email: vance@terrainplot.com<br>
     </div>
   </div>
 </body>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { projects, contacts, leads, fieldVisits, crews } from "@/db/schema";
+import { projects, contacts, leads, fieldVisits, crews, prospects } from "@/db/schema";
 import { eq, and, ilike } from "drizzle-orm";
 
 /**
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         result = await checkSchedule(tenantId, args);
         break;
       case "qualify_prospect":
-        result = await qualifyProspect(tenantId, args, body.call);
+        result = await qualifyProspect(args, body.call);
         break;
       default:
         result = "I'm not able to help with that right now. Let me transfer you to our office.";
@@ -306,7 +306,6 @@ async function checkSchedule(
  * in SurveyDesk's own intake dashboard.
  */
 async function qualifyProspect(
-  tenantId: string,
   args: {
     firm_name?: string;
     contact_name?: string;
@@ -324,102 +323,31 @@ async function qualifyProspect(
     const firmName = args.firm_name || "Unknown Firm";
     const contactName = args.contact_name || "Unknown";
 
-    // Try to find existing contact by phone
-    let contactId: string | null = null;
-    if (callerPhone) {
-      const digits = callerPhone.replace(/\D/g, "");
-      const last10 = digits.slice(-10);
-
-      if (last10.length === 10) {
-        const allContacts = await db
-          .select({ id: contacts.id, phone: contacts.phone })
-          .from(contacts)
-          .where(eq(contacts.tenantId, tenantId));
-
-        const match = allContacts.find((c) => {
-          if (!c.phone) return false;
-          return c.phone.replace(/\D/g, "").slice(-10) === last10;
-        });
-        if (match) contactId = match.id;
-      }
-    }
-
-    // Create contact if no match
-    if (!contactId) {
-      const nameParts = contactName.split(" ");
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(" ") || null;
-
-      const [newContact] = await db
-        .insert(contacts)
-        .values({
-          tenantId,
-          type: "other",
-          firstName,
-          lastName,
-          companyName: firmName,
-          phone: callerPhone,
-          email: args.contact_email || null,
-        })
-        .returning();
-
-      contactId = newContact.id;
-      console.log(`[qualify_prospect] Created contact: ${contactName} at ${firmName}`);
-    }
-
-    // Build qualifying notes
-    const noteParts: string[] = [];
-    noteParts.push(`🏢 SurveyDesk Sales Prospect — ${firmName}`);
-    if (args.firm_size) noteParts.push(`Team size: ${args.firm_size}`);
-    if (args.current_tools) noteParts.push(`Current tools: ${args.current_tools}`);
-    if (args.pain_points) noteParts.push(`Pain points: ${args.pain_points}`);
-    if (args.interest_level) noteParts.push(`Interest level: ${args.interest_level}`);
-
-    // Map interest level to urgency
-    const urgencyMap: Record<string, string> = {
-      hot: "high",
-      warm: "medium",
-      curious: "low",
-    };
-    const urgency = urgencyMap[args.interest_level || ""] || "medium";
-
-    // Create lead
-    const [newLead] = await db
-      .insert(leads)
+    // Insert into platform-level prospects table (not tenant-scoped)
+    const [prospect] = await db
+      .insert(prospects)
       .values({
-        tenantId,
-        contactId,
-        propertyAddress: `SurveyDesk Prospect — ${firmName}`,
-        surveyType: "other" as any,
-        source: "phone_intake",
-        status: "new",
-        urgency: urgency as any,
-        callerEmail: args.contact_email || null,
-        callerPhone: callerPhone || null,
-        specialRequests: args.interest_level
-          ? `Interest: ${args.interest_level}. ${args.pain_points || ""}`
-          : null,
-        notes: noteParts.join("\n"),
-      })
-      .returning();
-
-    console.log(`[qualify_prospect] Created prospect lead: ${newLead.id} — ${firmName} (${args.interest_level || "unknown"})`);
-
-    // Send branded follow-up email with extracted call data (non-blocking)
-    // Only for the SurveyDesk sales tenant — not for surveying firms using the product
-    const salesTenantId = process.env.SURVEYDESK_SALES_TENANT_ID;
-    if (args.contact_email && salesTenantId && tenantId === salesTenantId) {
-      const { sendProspectFollowUp } = await import(
-        "@/lib/services/prospect-follow-up"
-      );
-      sendProspectFollowUp(tenantId, newLead.id, contactId!, {
         firmName,
         contactName,
+        email: args.contact_email || null,
+        phone: callerPhone,
         firmSize: args.firm_size || null,
         currentTools: args.current_tools || null,
         painPoints: args.pain_points || null,
         interestLevel: args.interest_level || null,
-      }).catch((err) =>
+        status: "new",
+        callId: callData?.call_id || null,
+      })
+      .returning();
+
+    console.log(`[qualify_prospect] Created prospect: ${prospect.id} — ${firmName} (${args.interest_level || "unknown"})`);
+
+    // Send follow-up email + SMS (non-blocking)
+    if (args.contact_email) {
+      const { sendProspectFollowUp } = await import(
+        "@/lib/services/prospect-follow-up"
+      );
+      sendProspectFollowUp(prospect).catch((err) =>
         console.error("[qualify_prospect] Follow-up error:", err)
       );
     }

@@ -1,8 +1,8 @@
 import { db } from "@/db";
-import { tenants, users } from "@/db/schema";
+import { tenants, users, prospects } from "@/db/schema";
 import { sql, desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { Building2, Users, Plus, Clock, CreditCard, Zap } from "lucide-react";
+import { Building2, Users, Plus, Clock, CreditCard, Zap, Megaphone } from "lucide-react";
 
 export default async function AdminDashboard() {
   // Get counts
@@ -24,6 +24,12 @@ export default async function AdminDashboard() {
     .select({ count: sql<number>`count(*)` })
     .from(tenants)
     .where(eq(tenants.subscriptionStatus, "active"));
+
+  // New prospects
+  const [newProspectCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(prospects)
+    .where(eq(prospects.status, "new"));
 
   // Signups in last 7 days
   const sevenDaysAgo = new Date();
@@ -69,7 +75,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
@@ -135,6 +141,19 @@ export default async function AdminDashboard() {
             </div>
           </div>
         </div>
+        <Link href="/admin/prospects" className="bg-white rounded-xl border border-gray-200 p-5 hover:border-indigo-200 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <Megaphone size={18} className="text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">
+                {Number(newProspectCount.count)}
+              </p>
+              <p className="text-xs text-gray-500">New Prospects</p>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Recent Tenants */}
