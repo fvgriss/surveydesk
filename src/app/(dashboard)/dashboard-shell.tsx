@@ -32,6 +32,9 @@ const NAV_ITEMS = [
   { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
   { href: "/contacts", label: "Contacts", icon: Users, roles: [...ADMIN_ROLES, "crew_chief"] },
   { href: "/billing", label: "Billing", icon: DollarSign, roles: ADMIN_ROLES },
+];
+
+const BOTTOM_NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: Settings, roles: ADMIN_ROLES },
   { href: "/subscription", label: "Subscription", icon: CreditCard, roles: ["owner", "office_manager"] },
 ];
@@ -141,14 +144,31 @@ export function DashboardShell({
             );
           })}
         </nav>
-        <div className="p-3 border-t border-gray-800 space-y-1">
+        <div className="px-2 pb-1 border-t border-gray-800 pt-2 space-y-0.5">
+          {BOTTOM_NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800"
+                }`}
+              >
+                <item.icon size={18} className="flex-shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 text-xs transition-colors ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 text-sm transition-colors ${
               collapsed ? "justify-center" : ""
             }`}
           >
-            <LogOut size={16} />
+            <LogOut size={18} className="flex-shrink-0" />
             {!collapsed && <span>Sign out</span>}
           </button>
           <button
