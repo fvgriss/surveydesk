@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
   // Allow public routes: login, signup, proposal acceptance, API webhooks
   const isPublicRoute =
     request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/landing.html" || request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/admin/login") ||
     request.nextUrl.pathname.startsWith("/auth/callback") ||
     request.nextUrl.pathname.startsWith("/signup") ||
     request.nextUrl.pathname.startsWith("/onboarding") ||
