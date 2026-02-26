@@ -1281,7 +1281,7 @@ function IntegrationsTab({ gmail, retellPhone, subscriptionStatus }: { gmail: Gm
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Gmail</h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Auto-detect survey requests in your inbox and create leads.
+                Sync your Gmail inbox and use AI to triage survey requests.
               </p>
             </div>
           </div>
@@ -1327,7 +1327,7 @@ function IntegrationsTab({ gmail, retellPhone, subscriptionStatus }: { gmail: Gm
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              Go to the Intake page and click &ldquo;Sync Emails&rdquo; to pull in recent survey requests.
+              Go to the Inbox page and click &ldquo;Sync Now&rdquo; to pull in recent emails.
             </p>
           </div>
         )}

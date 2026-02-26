@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getCurrentTenant } from "@/lib/utils/get-tenant";
 import { getGmailClient } from "@/lib/gmail/client";
 import { db } from "@/db";
-import { emailLog, contacts, leads, integrations } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { parseEmail } from "@/lib/utils/parse-email";
+import { emailLog, contacts, projects, integrations } from "@/db/schema";
+import { eq, and, notInArray } from "drizzle-orm";
+import { classifyEmail } from "@/lib/services/classify-email";
 
 /**
  * GET /api/gmail/sync
  *
- * Pulls recent inbound emails from Gmail and processes them for leads.
+ * Pulls recent inbound emails from Gmail and stores them in the Inbox.
+ * AI classification runs async after storage.
  * Only processes emails that haven't been seen before (tracked by gmailMessageId).
  *
  * Query params:
@@ -34,7 +35,6 @@ export async function GET(request: Request) {
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
 
     // --- Fetch recent inbound messages ---
-    // Only get messages in INBOX, skip sent/drafts
     const listRes = await gmail.users.messages.list({
       userId: "me",
       maxResults: limit,
@@ -61,14 +61,7 @@ export async function GET(request: Request) {
 
     // --- Process new messages ---
     let synced = 0;
-    let leadsCreated = 0;
-    const results: Array<{
-      messageId: string;
-      subject: string;
-      from: string;
-      isLead: boolean;
-      leadId: string | null;
-    }> = [];
+    const newEmailIds: string[] = [];
 
     for (const msg of messages) {
       if (!msg.id || existingIds.has(msg.id)) continue;
@@ -99,13 +92,8 @@ export async function GET(request: Request) {
       // Extract body text
       const body = extractTextBody(fullMsg.data.payload);
 
-      // Parse the email for lead info
-      const parsed = parseEmail(subject, body, fromEmail);
-
-      // --- Match or create contact ---
+      // Try matching sender to existing contact
       let contactId: string | null = null;
-
-      // Try matching by email
       if (fromEmail) {
         const allContacts = await db
           .select({ id: contacts.id, email: contacts.email })
@@ -118,108 +106,27 @@ export async function GET(request: Request) {
         if (match) contactId = match.id;
       }
 
-      let linkedLeadId: string | null = null;
+      // --- Store the email (no auto lead creation) ---
+      const [inserted] = await db
+        .insert(emailLog)
+        .values({
+          tenantId: tenant.tenantId,
+          gmailMessageId: msg.id,
+          threadId: fullMsg.data.threadId || null,
+          from: fromEmail,
+          fromName: fromName || null,
+          to,
+          subject,
+          bodyPreview: body.slice(0, 500),
+          bodyFull: body.slice(0, 10000),
+          emailStatus: "new",
+          contactId,
+          receivedAt,
+        })
+        .returning({ id: emailLog.id });
 
-      if (parsed.isLeadRequest) {
-        // Create contact if needed
-        if (!contactId) {
-          const [newContact] = await db
-            .insert(contacts)
-            .values({
-              tenantId: tenant.tenantId,
-              type: "homeowner",
-              firstName: parsed.firstName || fromName.split(" ")[0] || "Unknown",
-              lastName:
-                parsed.lastName ||
-                fromName.split(" ").slice(1).join(" ") ||
-                null,
-              email: fromEmail || null,
-              phone: parsed.phone || null,
-            })
-            .returning();
-          contactId = newContact.id;
-        } else if (parsed.phone) {
-          // Update contact with phone if we found one
-          await db
-            .update(contacts)
-            .set({ phone: parsed.phone })
-            .where(eq(contacts.id, contactId));
-        }
-
-        // Build notes
-        const noteParts: string[] = [];
-        if (parsed.timeline)
-          noteParts.push(`Timeline: ${parsed.timeline}`);
-        noteParts.push(`Subject: ${subject}`);
-        noteParts.push(
-          `Email preview: ${body.slice(0, 300)}${body.length > 300 ? "..." : ""}`
-        );
-
-        // Create lead
-        const validSurveyTypes = [
-          "boundary", "alta", "topographic", "as_built",
-          "subdivision", "construction", "elevation_cert", "route", "other",
-        ];
-        const surveyType = validSurveyTypes.includes(parsed.surveyType || "")
-          ? parsed.surveyType!
-          : "boundary";
-
-        const [newLead] = await db
-          .insert(leads)
-          .values({
-            tenantId: tenant.tenantId,
-            contactId,
-            propertyAddress:
-              parsed.propertyAddress || "Address TBD — from email",
-            surveyType: surveyType as any,
-            source: "email",
-            status: "new",
-            urgency: parsed.urgency,
-            notes: noteParts.join("\n\n"),
-          })
-          .returning();
-
-        linkedLeadId = newLead.id;
-        leadsCreated++;
-        console.log(
-          `[Gmail sync] Created lead from email: ${subject} → ${newLead.id}`
-        );
-
-        // Notify the tenant owner (non-blocking)
-        const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
-        notifyOwnerNewLead(tenant.tenantId, {
-          callerName: fromName || fromEmail,
-          propertyAddress: parsed.propertyAddress,
-          surveyType,
-          urgency: parsed.urgency,
-          source: "email",
-        }).catch(() => {});
-      }
-
-      // --- Log the email ---
-      await db.insert(emailLog).values({
-        tenantId: tenant.tenantId,
-        gmailMessageId: msg.id,
-        threadId: fullMsg.data.threadId || null,
-        from: fromEmail,
-        fromName: fromName || null,
-        to,
-        subject,
-        bodyPreview: body.slice(0, 500),
-        contactId,
-        leadId: linkedLeadId,
-        outcome: parsed.isLeadRequest ? "lead_created" : "ignored",
-        receivedAt,
-      });
-
+      newEmailIds.push(inserted.id);
       synced++;
-      results.push({
-        messageId: msg.id,
-        subject,
-        from: fromEmail,
-        isLead: parsed.isLeadRequest,
-        leadId: linkedLeadId,
-      });
     }
 
     // Update last sync timestamp
@@ -233,12 +140,17 @@ export async function GET(request: Request) {
         )
       );
 
+    // --- Trigger AI classification async (non-blocking) ---
+    if (newEmailIds.length > 0) {
+      classifyNewEmails(tenant.tenantId, newEmailIds).catch((err) =>
+        console.error("[Gmail sync] Classification error:", err)
+      );
+    }
+
     return NextResponse.json({
       synced,
-      leadsCreated,
       checked: messages.length,
       alreadyProcessed: existingIds.size,
-      results,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -247,6 +159,68 @@ export async function GET(request: Request) {
       { error: "email sync failed", detail: msg },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Classify newly synced emails using Claude AI.
+ * Runs after the sync response is already sent.
+ */
+async function classifyNewEmails(tenantId: string, emailIds: string[]) {
+  // Fetch active projects for matching
+  const activeProjects = await db
+    .select({
+      id: projects.id,
+      propertyAddress: projects.propertyAddress,
+      surveyType: projects.surveyType,
+    })
+    .from(projects)
+    .where(
+      and(
+        eq(projects.tenantId, tenantId),
+        notInArray(projects.status, ["closed"])
+      )
+    );
+
+  for (const emailId of emailIds) {
+    try {
+      const [email] = await db
+        .select()
+        .from(emailLog)
+        .where(eq(emailLog.id, emailId))
+        .limit(1);
+
+      if (!email) continue;
+
+      const result = await classifyEmail({
+        subject: email.subject || "",
+        bodyPreview: email.bodyPreview || "",
+        bodyFull: email.bodyFull || "",
+        fromEmail: email.from || "",
+        fromName: email.fromName || "",
+        activeProjects: activeProjects.map((p) => ({
+          id: p.id,
+          propertyAddress: p.propertyAddress,
+          surveyType: p.surveyType,
+        })),
+      });
+
+      if (result) {
+        await db
+          .update(emailLog)
+          .set({
+            aiClassification: result.classification,
+            aiSuggestion: result,
+          })
+          .where(eq(emailLog.id, emailId));
+
+        console.log(
+          `[Gmail sync] Classified email "${email.subject}" as ${result.classification} (${Math.round(result.confidence * 100)}%)`
+        );
+      }
+    } catch (err) {
+      console.error(`[Gmail sync] Failed to classify email ${emailId}:`, err);
+    }
   }
 }
 

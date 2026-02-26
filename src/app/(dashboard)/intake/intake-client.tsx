@@ -372,14 +372,6 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
             </span>
           )}
           <button
-            onClick={handleEmailSync}
-            disabled={syncingEmail}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <Mail size={12} className={syncingEmail ? "animate-pulse" : ""} />
-            {syncingEmail ? "Syncing..." : "Sync Emails"}
-          </button>
-          <button
             onClick={handleSync}
             disabled={syncing}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"

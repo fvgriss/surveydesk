@@ -189,3 +189,37 @@ export const LEAD_SOURCE_COLORS: Record<string, string> = {
 // ============================================================
 
 export const DEFAULT_BADGE = "bg-gray-50 text-gray-600 border-gray-200";
+
+// ============================================================
+// EMAIL CLASSIFICATION (Inbox page)
+// ============================================================
+
+export const EMAIL_CLASSIFICATION_LABELS: Record<string, string> = {
+  survey_request: "Survey Request",
+  project_update: "Project Update",
+  general_inquiry: "General Inquiry",
+  spam: "Spam",
+  not_relevant: "Not Relevant",
+};
+
+export const EMAIL_CLASSIFICATION_COLORS: Record<string, string> = {
+  survey_request: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  project_update: "bg-blue-50 text-blue-700 border-blue-200",
+  general_inquiry: "bg-amber-50 text-amber-700 border-amber-200",
+  spam: "bg-gray-50 text-gray-500 border-gray-200",
+  not_relevant: "bg-gray-50 text-gray-400 border-gray-200",
+};
+
+export const EMAIL_STATUS_LABELS: Record<string, string> = {
+  new: "New",
+  lead_created: "Lead Created",
+  assigned: "Assigned",
+  dismissed: "Dismissed",
+};
+
+export const EMAIL_STATUS_COLORS: Record<string, string> = {
+  new: "bg-blue-50 text-blue-700 border-blue-200",
+  lead_created: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  assigned: "bg-purple-50 text-purple-700 border-purple-200",
+  dismissed: "bg-gray-50 text-gray-400 border-gray-200",
+};

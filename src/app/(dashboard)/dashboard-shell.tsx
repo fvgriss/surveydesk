@@ -10,6 +10,7 @@ import {
   Phone,
   FileText,
   Calendar,
+  Mail,
   DollarSign,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,7 @@ const ADMIN_ROLES = ["owner", "office_manager"];
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: Home, roles: ADMIN_ROLES },
   { href: "/intake", label: "Intake", icon: Phone, roles: ADMIN_ROLES },
+  { href: "/inbox", label: "Inbox", icon: Mail, roles: ADMIN_ROLES },
   { href: "/proposals", label: "Proposals", icon: FileText, roles: ADMIN_ROLES },
   { href: "/projects", label: "Projects", icon: FolderOpen, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },
   { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["owner", "office_manager", "crew_chief", "instrument_person"] },

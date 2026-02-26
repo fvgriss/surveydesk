@@ -861,10 +861,27 @@ export const emailLog = pgTable(
     to: varchar("to_address", { length: 255 }),
     subject: text("subject"),
     bodyPreview: text("body_preview"), // first ~500 chars
+    bodyFull: text("body_full"), // full email body for detail view
+    // AI classification
+    aiClassification: varchar("ai_classification", { length: 50 }), // survey_request, project_update, general_inquiry, spam, not_relevant
+    aiSuggestion: jsonb("ai_suggestion").$type<{
+      suggestedAction: string;
+      extractedAddress?: string;
+      extractedSurveyType?: string;
+      extractedContactName?: string;
+      extractedContactPhone?: string;
+      extractedUrgency?: string;
+      matchedProjectId?: string;
+      matchedProjectAddress?: string;
+      confidence: number;
+      reasoning?: string;
+    }>(),
+    emailStatus: varchar("email_status", { length: 50 }).notNull().default("new"), // new, lead_created, assigned, dismissed
     // Parsed data
     contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
     leadId: uuid("lead_id").references(() => leads.id, { onDelete: "set null" }),
-    outcome: varchar("outcome", { length: 50 }), // "lead_created", "existing_client", "spam", "ignored"
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    outcome: varchar("outcome", { length: 50 }), // legacy: "lead_created", "existing_client", "spam", "ignored"
     // Timestamps
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
     processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
@@ -873,6 +890,7 @@ export const emailLog = pgTable(
     index("email_log_tenant_idx").on(table.tenantId),
     index("email_log_date_idx").on(table.tenantId, table.receivedAt),
     index("email_log_gmail_idx").on(table.gmailMessageId),
+    index("email_log_status_idx").on(table.tenantId, table.emailStatus),
   ]
 );
 
