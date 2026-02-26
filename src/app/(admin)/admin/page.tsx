@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { tenants, users, prospects } from "@/db/schema";
 import { sql, desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { Building2, Users, Plus, Clock, CreditCard, Zap, Megaphone } from "lucide-react";
+import { Building2, Users, Plus, Clock, CreditCard, Zap, Megaphone, Phone } from "lucide-react";
 
 export default async function AdminDashboard() {
   // Get counts
@@ -55,6 +55,9 @@ export default async function AdminDashboard() {
     .from(tenants)
     .orderBy(desc(tenants.createdAt))
     .limit(10);
+
+  const salesAgentId = process.env.RETELL_SALES_AGENT_ID || null;
+  const salesPhoneNumber = process.env.RETELL_SALES_PHONE_NUMBER || null;
 
   return (
     <div className="p-6">
@@ -154,6 +157,43 @@ export default async function AdminDashboard() {
             </div>
           </div>
         </Link>
+      </div>
+
+      {/* Sales Agent */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <Phone size={20} className="text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 text-sm">Sales Phone Agent</h2>
+              <p className="text-xs text-gray-500">
+                Inbound line for surveying firms interested in SurveyDesk
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 text-sm">
+            <div>
+              <span className="text-xs text-gray-400 uppercase tracking-wide">Phone</span>
+              <p className="font-mono text-gray-800">
+                {salesPhoneNumber && salesPhoneNumber !== "+1XXXXXXXXXX" ? salesPhoneNumber : <span className="text-gray-400">Not configured</span>}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 uppercase tracking-wide">Agent ID</span>
+              <p className="font-mono text-gray-800 text-xs">
+                {salesAgentId && salesAgentId !== "agent_..." ? salesAgentId : <span className="text-gray-400">Not configured</span>}
+              </p>
+            </div>
+            <Link
+              href="/admin/prospects"
+              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              View Prospects &rarr;
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Recent Tenants */}
