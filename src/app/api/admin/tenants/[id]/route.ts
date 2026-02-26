@@ -85,6 +85,7 @@ export async function PATCH(
       "serviceAreaCounties", "logoUrl",
       "defaultSurveyTypes", "proposalTerms", "invoiceNotes",
       "retellAgentId", "retellPhoneNumber",
+      "onboardingComplete",
     ];
 
     const updates: Record<string, unknown> = {};

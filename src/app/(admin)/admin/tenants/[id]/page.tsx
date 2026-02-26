@@ -11,6 +11,8 @@ import {
   Check,
   Save,
   LogIn,
+  RotateCcw,
+  Phone,
 } from "lucide-react";
 
 type TenantUser = {
@@ -33,6 +35,10 @@ type TenantData = {
   zip: string | null;
   plsLicenseNumber: string | null;
   plsLicenseState: string | null;
+  onboardingComplete: boolean;
+  subscriptionStatus: string | null;
+  subscriptionPlan: string | null;
+  retellPhoneNumber: string | null;
   createdAt: string;
 };
 
@@ -103,6 +109,25 @@ export default function TenantDetailPage() {
       setError("Network error");
     }
     setSaving(false);
+  };
+
+  const handleResetOnboarding = async () => {
+    if (!confirm("Reset onboarding? The tenant owner will see the onboarding wizard on next login.")) return;
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onboardingComplete: false }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to reset");
+      } else {
+        setTenant((t) => t ? { ...t, onboardingComplete: false } : t);
+      }
+    } catch {
+      setError("Network error");
+    }
   };
 
   const handleImpersonate = async () => {
@@ -190,6 +215,54 @@ export default function TenantDetailPage() {
             {stats.invoiceCount}
           </p>
           <p className="text-xs text-gray-500">Invoices</p>
+        </div>
+      </div>
+
+      {/* Quick Info */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6 text-sm">
+            <div>
+              <span className="text-gray-500">Status: </span>
+              <span className={`font-medium capitalize ${
+                tenant.subscriptionStatus === "active" ? "text-green-700" :
+                tenant.subscriptionStatus === "trialing" ? "text-amber-700" :
+                tenant.subscriptionStatus === "past_due" ? "text-red-700" :
+                "text-gray-600"
+              }`}>
+                {tenant.subscriptionStatus || "trialing"}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500">Plan: </span>
+              <span className="font-medium text-gray-800 capitalize">
+                {tenant.subscriptionPlan || "starter"}
+              </span>
+            </div>
+            {tenant.retellPhoneNumber && (
+              <div className="flex items-center gap-1">
+                <Phone size={12} className="text-gray-400" />
+                <span className="font-mono text-xs text-gray-600">
+                  {tenant.retellPhoneNumber}
+                </span>
+              </div>
+            )}
+            <div>
+              <span className="text-gray-500">Onboarding: </span>
+              <span className={`font-medium ${tenant.onboardingComplete ? "text-green-700" : "text-amber-700"}`}>
+                {tenant.onboardingComplete ? "Complete" : "Incomplete"}
+              </span>
+            </div>
+          </div>
+          {tenant.onboardingComplete && (
+            <button
+              onClick={handleResetOnboarding}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset Onboarding
+            </button>
+          )}
         </div>
       </div>
 
