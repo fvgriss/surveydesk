@@ -85,19 +85,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // --- Determine tenant (by agent ID → tenant mapping, fallback to DEFAULT_TENANT_ID) ---
-    const { resolveTenantId } = await import("@/lib/retell/resolve-tenant");
-    const tenantId = await resolveTenantId(call?.agent_id);
-    if (!tenantId) {
-      console.error("Could not determine tenant for agent:", call?.agent_id);
-      return NextResponse.json({ error: "no tenant" }, { status: 500 });
-    }
-
     // --- Extract call data ---
     const callerPhone = call.from_number || call.metadata?.caller_phone || null;
 
-    // Retell sends call_type as "phone_call", "web_call", etc.
-    // and direction as "inbound" or "outbound". Check both fields.
     const rawDirection = call.direction || call.call_type || "";
     const direction: "inbound" | "outbound" | "missed" =
       rawDirection === "inbound" || rawDirection === "phone_call"
@@ -106,17 +96,59 @@ export async function POST(request: NextRequest) {
           ? "outbound"
           : durationMs(call) === 0
             ? "missed"
-            : "inbound"; // default to inbound for Retell calls
+            : "inbound";
 
     const durationSeconds = Math.round(durationMs(call) / 1000);
     const summary = call.call_analysis?.call_summary || null;
     const transcript = call.transcript || call.call_analysis?.transcript || null;
 
+    // --- Check if this is a SurveyDesk sales agent call (platform-level, not tenant-scoped) ---
+    const salesAgentId = process.env.SUPERADMIN_RETELL_AGENT_ID;
+    const isSalesCall = salesAgentId && call?.agent_id === salesAgentId;
+
+    if (isSalesCall) {
+      // Sales calls are platform-level — store call log under DEFAULT_TENANT_ID
+      // but skip all tenant-scoped logic (contact matching, lead creation).
+      const tenantId = process.env.DEFAULT_TENANT_ID;
+      if (!tenantId) {
+        console.error("[Retell webhook] Sales call but no DEFAULT_TENANT_ID set");
+        return NextResponse.json({ error: "no tenant" }, { status: 500 });
+      }
+
+      const [newCall] = await db
+        .insert(callLog)
+        .values({
+          tenantId,
+          retellCallId: call.call_id,
+          retellAgentId: call.agent_id,
+          direction,
+          callerPhone,
+          duration: durationSeconds,
+          summary,
+          transcript,
+          outcome: "general",
+          recordingUrl: call.recording_url || null,
+          startedAt: call.start_timestamp ? new Date(call.start_timestamp) : new Date(),
+          endedAt: call.end_timestamp ? new Date(call.end_timestamp) : null,
+        })
+        .returning();
+
+      console.log(`[Retell webhook] Sales call log: ${newCall.id}, call_id=${call.call_id}`);
+      return NextResponse.json({ received: true, callLogId: newCall.id });
+    }
+
+    // --- Determine tenant (by agent ID → tenant mapping, fallback to DEFAULT_TENANT_ID) ---
+    const { resolveTenantId } = await import("@/lib/retell/resolve-tenant");
+    const tenantId = await resolveTenantId(call?.agent_id);
+    if (!tenantId) {
+      console.error("Could not determine tenant for agent:", call?.agent_id);
+      return NextResponse.json({ error: "no tenant" }, { status: 500 });
+    }
+
     // --- Try to match an existing contact by phone (normalized) ---
     let matchedContactId: string | null = null;
     if (callerPhone) {
       const digits = normalizePhone(callerPhone);
-      // Match on last 10 digits to handle +1 prefix differences
       const last10 = digits.slice(-10);
 
       if (last10.length === 10) {
@@ -195,8 +227,6 @@ export async function POST(request: NextRequest) {
 
     // --- Fallback: create lead from transcript if tool-call didn't fire ---
     if (!linkedLeadId && direction === "inbound" && durationSeconds > 15) {
-      // The call lasted long enough to be a real conversation but no lead was created.
-      // Parse the AI summary for structured data.
       const parsed = parseCallSummary(summary, transcript);
 
       const validSurveyTypes = [
@@ -209,7 +239,6 @@ export async function POST(request: NextRequest) {
 
       let contactId = matchedContactId;
 
-      // Create contact if we don't have one
       if (!contactId && (callerPhone || parsed.callerName)) {
         const [newContact] = await db
           .insert(contacts)
@@ -227,7 +256,6 @@ export async function POST(request: NextRequest) {
         console.log(`[Retell webhook] Created contact: ${parsed.callerName || callerPhone}`);
       }
 
-      // If we matched an existing contact but have a better name, update it
       if (contactId && parsed.callerName) {
         await db
           .update(contacts)
@@ -239,7 +267,6 @@ export async function POST(request: NextRequest) {
           .where(eq(contacts.id, contactId));
       }
 
-      // Build notes with timeline and summary
       const noteParts: string[] = [];
       if (parsed.timeline) noteParts.push(`Timeline: ${parsed.timeline}`);
       if (summary) noteParts.push(`AI Summary: ${summary}`);
@@ -265,7 +292,6 @@ export async function POST(request: NextRequest) {
       linkedLeadId = newLead.id;
       console.log(`[Retell webhook] Created fallback lead: ${newLead.id}`);
 
-      // Notify the tenant owner (non-blocking)
       const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
       notifyOwnerNewLead(tenantId, {
         callerName: parsed.callerName,
@@ -306,7 +332,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Retell webhook] Created call log: ${newCall.id}, outcome: ${outcome}, lead: ${linkedLeadId || "none"}`);
 
-    // If we found a lead, update it with the call log reference
     if (linkedLeadId) {
       await db
         .update(leads)
