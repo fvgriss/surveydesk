@@ -395,6 +395,7 @@ async function qualifyProspect(
 
     // Deduplicate: if the agent already saved a prospect for this call, update it
     const callId = callData?.call_id || null;
+    console.log(`[qualify_prospect] callData present=${!!callData}, call_id=${callId}, from_number=${callData?.from_number}`);
     let prospect;
     let isNew = false;
 

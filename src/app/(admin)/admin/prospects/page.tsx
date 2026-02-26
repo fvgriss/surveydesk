@@ -34,6 +34,9 @@ export default async function ProspectsPage() {
         .where(inArray(callLog.retellCallId, callIds))
     : [];
 
+  console.log(`[prospects] ${allProspects.length} prospects, ${callIds.length} with callId, ${calls.length} call logs found`);
+  if (callIds.length > 0) console.log(`[prospects] callIds:`, callIds);
+
   const callMap = new Map(calls.map((c) => [c.retellCallId, c]));
 
   const serialized = allProspects.map((p) => {
