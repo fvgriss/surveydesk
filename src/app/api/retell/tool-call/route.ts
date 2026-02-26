@@ -448,7 +448,7 @@ async function qualifyProspect(
     }
 
     // Send follow-up email + SMS only for new prospects (not updates)
-    if (isNew && args.contact_email) {
+    if (isNew && (args.contact_email || callerPhone)) {
       const { sendProspectFollowUp } = await import(
         "@/lib/services/prospect-follow-up"
       );

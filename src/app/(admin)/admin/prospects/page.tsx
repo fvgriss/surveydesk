@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { prospects } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { prospects, callLog } from "@/db/schema";
+import { desc, eq, inArray } from "drizzle-orm";
 import { Phone } from "lucide-react";
 import { ProspectsClient } from "./prospects-client";
 
@@ -14,13 +14,46 @@ export default async function ProspectsPage() {
     .from(prospects)
     .orderBy(desc(prospects.createdAt));
 
-  const serialized = allProspects.map((p) => ({
-    ...p,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-    followUpSentAt: p.followUpSentAt?.toISOString() || null,
-    smsSentAt: p.smsSentAt?.toISOString() || null,
-  }));
+  // Fetch call logs for prospects that have a callId
+  const callIds = allProspects
+    .map((p) => p.callId)
+    .filter((id): id is string => !!id);
+
+  const calls = callIds.length > 0
+    ? await db
+        .select({
+          retellCallId: callLog.retellCallId,
+          summary: callLog.summary,
+          transcript: callLog.transcript,
+          recordingUrl: callLog.recordingUrl,
+          duration: callLog.duration,
+          callerPhone: callLog.callerPhone,
+          startedAt: callLog.startedAt,
+        })
+        .from(callLog)
+        .where(inArray(callLog.retellCallId, callIds))
+    : [];
+
+  const callMap = new Map(calls.map((c) => [c.retellCallId, c]));
+
+  const serialized = allProspects.map((p) => {
+    const call = p.callId ? callMap.get(p.callId) : null;
+    return {
+      ...p,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      followUpSentAt: p.followUpSentAt?.toISOString() || null,
+      smsSentAt: p.smsSentAt?.toISOString() || null,
+      call: call ? {
+        summary: call.summary,
+        transcript: call.transcript,
+        recordingUrl: call.recordingUrl,
+        duration: call.duration,
+        callerPhone: call.callerPhone,
+        startedAt: call.startedAt.toISOString(),
+      } : null,
+    };
+  });
 
   return (
     <>

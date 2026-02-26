@@ -43,45 +43,44 @@ type Prospect = {
  * Non-blocking — called with .catch() from the tool-call handler.
  */
 export async function sendProspectFollowUp(prospect: Prospect): Promise<void> {
-  if (!prospect.email) {
-    console.log("[prospect-follow-up] No email, skipping");
-    return;
-  }
-
   const firstName = prospect.contactName.split(" ")[0] || "there";
 
-  const emailHtml = buildFollowUpEmail({
-    contactName: prospect.contactName,
-    firstName,
-    firmName: prospect.firmName,
-    firmSize: prospect.firmSize,
-    currentTools: prospect.currentTools,
-    painPoints: prospect.painPoints,
-    interestLevel: prospect.interestLevel,
-    bookingUrl: BOOKING_URL,
-  });
+  // Send email (only if we have an email address)
+  if (prospect.email) {
+    try {
+      const emailHtml = buildFollowUpEmail({
+        contactName: prospect.contactName,
+        firstName,
+        firmName: prospect.firmName,
+        firmSize: prospect.firmSize,
+        currentTools: prospect.currentTools,
+        painPoints: prospect.painPoints,
+        interestLevel: prospect.interestLevel,
+        bookingUrl: BOOKING_URL,
+      });
 
-  // Send email
-  try {
-    await resend.emails.send({
-      from: "SurveyDesk <proposals@updates.surveydesk.app>",
-      to: prospect.email,
-      cc: "vance@terrainplot.com",
-      subject: `${firstName}, let's get ${prospect.firmName} set up on SurveyDesk`,
-      html: emailHtml,
-    });
+      await resend.emails.send({
+        from: "SurveyDesk <proposals@updates.surveydesk.app>",
+        to: prospect.email,
+        cc: "vance@terrainplot.com",
+        subject: `${firstName}, let's get ${prospect.firmName} set up on SurveyDesk`,
+        html: emailHtml,
+      });
 
-    await db
-      .update(prospects)
-      .set({ followUpSentAt: new Date(), updatedAt: new Date() })
-      .where(eq(prospects.id, prospect.id));
+      await db
+        .update(prospects)
+        .set({ followUpSentAt: new Date(), updatedAt: new Date() })
+        .where(eq(prospects.id, prospect.id));
 
-    console.log(`[prospect-follow-up] Email sent to ${prospect.email}`);
-  } catch (err) {
-    console.error("[prospect-follow-up] Email failed:", err);
+      console.log(`[prospect-follow-up] Email sent to ${prospect.email}`);
+    } catch (err) {
+      console.error("[prospect-follow-up] Email failed:", err);
+    }
+  } else {
+    console.log("[prospect-follow-up] No email, skipping email");
   }
 
-  // Send SMS
+  // Send SMS (independent of email — fires if phone is available)
   if (prospect.phone) {
     try {
       const tw = getTwilioClient();

@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, ChevronUp, Mail, MessageSquare } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock } from "lucide-react";
+
+type CallData = {
+  summary: string | null;
+  transcript: string | null;
+  recordingUrl: string | null;
+  duration: number | null;
+  callerPhone: string | null;
+  startedAt: string;
+};
 
 type Prospect = {
   id: string;
@@ -19,9 +28,16 @@ type Prospect = {
   followUpSentAt: string | null;
   smsSentAt: string | null;
   callId: string | null;
+  call: CallData | null;
   createdAt: string;
   updatedAt: string;
 };
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
 
 type FilterTab = "all" | "new" | "contacted" | "booked";
 
@@ -227,7 +243,7 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                   {expandedId === p.id && (
                     <tr key={`${p.id}-detail`} className="bg-gray-50/50">
                       <td colSpan={7} className="px-8 py-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm max-w-2xl">
+                        <div className="grid grid-cols-2 gap-4 text-sm max-w-3xl">
                           {p.email && (
                             <div>
                               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</div>
@@ -271,6 +287,54 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                             </div>
                           )}
                         </div>
+
+                        {/* Call Data */}
+                        {p.call && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            {/* Call meta */}
+                            <div className="flex items-center gap-4 mb-3">
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                <Clock size={12} />
+                                {p.call.duration ? formatDuration(p.call.duration) : "—"}
+                              </div>
+                              {p.call.callerPhone && (
+                                <div className="text-xs text-gray-500 font-mono">
+                                  From: {p.call.callerPhone}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Recording */}
+                            {p.call.recordingUrl && (
+                              <div className="mb-3">
+                                <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                                  Recording
+                                </div>
+                                <audio
+                                  controls
+                                  src={p.call.recordingUrl}
+                                  className="w-full h-10"
+                                  preload="none"
+                                />
+                              </div>
+                            )}
+
+                            {/* Summary */}
+                            {p.call.summary && (
+                              <div className="mb-3">
+                                <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
+                                  Call Summary
+                                </div>
+                                <div className="text-sm text-gray-700">{p.call.summary}</div>
+                              </div>
+                            )}
+
+                            {/* Transcript */}
+                            {p.call.transcript && (
+                              <ProspectTranscript transcript={p.call.transcript} />
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
@@ -280,6 +344,38 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ProspectTranscript({ transcript }: { transcript: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 hover:text-gray-600 transition-colors"
+      >
+        Transcript
+        {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {expanded ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto">
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{transcript}</p>
+        </div>
+      ) : (
+        <p
+          className="text-sm text-gray-500 italic cursor-pointer"
+          onClick={() => setExpanded(true)}
+        >
+          &ldquo;{transcript.slice(0, 200)}
+          {transcript.length > 200 ? "..." : ""}&rdquo;
+          {transcript.length > 200 && (
+            <span className="text-blue-500 text-xs ml-1 not-italic">Show full transcript</span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
