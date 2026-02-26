@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Phone,
   PhoneIncoming,
@@ -267,14 +267,14 @@ function formatDate(iso: string) {
 
 export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; leads: Lead[] }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"calls" | "leads">("calls");
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") === "leads" ? "leads" : "calls";
+  const [tab, setTab] = useState<"calls" | "leads">(defaultTab);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
-  const [syncingEmail, setSyncingEmail] = useState(false);
-  const [emailSyncResult, setEmailSyncResult] = useState<string | null>(null);
   const [transcriptExpanded, setTranscriptExpanded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -316,32 +316,6 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
     }
   }
 
-  async function handleEmailSync() {
-    setSyncingEmail(true);
-    setEmailSyncResult(null);
-    try {
-      const res = await fetch("/api/gmail/sync?limit=20");
-      const data = await res.json();
-      if (!res.ok) {
-        setEmailSyncResult(`Error: ${data.error || "sync failed"}`);
-      } else if (data.leadsCreated === 0 && data.synced === 0) {
-        setEmailSyncResult("No new emails");
-      } else {
-        setEmailSyncResult(
-          data.leadsCreated > 0
-            ? `${data.leadsCreated} new lead${data.leadsCreated > 1 ? "s" : ""} from email`
-            : `Checked ${data.synced} emails — no survey requests`
-        );
-        if (data.leadsCreated > 0) router.refresh();
-      }
-    } catch {
-      setEmailSyncResult("Network error");
-    } finally {
-      setSyncingEmail(false);
-      setTimeout(() => setEmailSyncResult(null), 4000);
-    }
-  }
-
   async function handleDeleteLead(leadId: string) {
     if (!window.confirm("Delete this lead? This cannot be undone.")) return;
     try {
@@ -366,9 +340,9 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
           <p className="text-sm text-gray-500 mt-0.5">AI voice agent call log and lead management.</p>
         </div>
         <div className="flex items-center gap-3">
-          {(syncResult || emailSyncResult) && (
-            <span className={`text-xs font-medium ${(syncResult || emailSyncResult)?.startsWith("Error") ? "text-red-600" : "text-green-600"}`}>
-              {syncResult || emailSyncResult}
+          {syncResult && (
+            <span className={`text-xs font-medium ${syncResult.startsWith("Error") ? "text-red-600" : "text-green-600"}`}>
+              {syncResult}
             </span>
           )}
           <button

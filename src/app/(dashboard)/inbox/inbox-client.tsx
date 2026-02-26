@@ -140,6 +140,7 @@ export function InboxClient({
               : e
           )
         );
+        router.refresh();
       }
     } catch (err) {
       console.error("Create lead failed:", err);
@@ -163,6 +164,7 @@ export function InboxClient({
             e.id === emailId ? { ...e, emailStatus: "assigned", projectId } : e
           )
         );
+        router.refresh();
       }
     } catch (err) {
       console.error("Assign failed:", err);
@@ -183,6 +185,7 @@ export function InboxClient({
             e.id === emailId ? { ...e, emailStatus: "dismissed" } : e
           )
         );
+        router.refresh();
       }
     } catch (err) {
       console.error("Dismiss failed:", err);
@@ -562,7 +565,7 @@ export function InboxClient({
               {selected.emailStatus === "lead_created" && selected.leadId && (
                 <div className="mx-6 mt-4">
                   <Link
-                    href="/intake"
+                    href="/intake?tab=leads"
                     className="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-800 font-medium"
                   >
                     <ExternalLink size={14} />
