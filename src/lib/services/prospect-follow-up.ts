@@ -84,6 +84,9 @@ export async function sendProspectFollowUp(prospect: Prospect): Promise<void> {
   if (prospect.phone) {
     try {
       const tw = getTwilioClient();
+      if (!tw) {
+        console.log("[prospect-follow-up] Twilio not configured (missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_PHONE_NUMBER)");
+      }
       if (tw) {
         await tw.client.messages.create({
           body: `Hi ${firstName}, this is Vance from SurveyDesk. Thanks for chatting with us about ${prospect.firmName}! I'd love to get you set up with a free 14-day trial. Book a quick 20-min call here: ${BOOKING_URL}`,
