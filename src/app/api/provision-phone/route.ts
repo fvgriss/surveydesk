@@ -9,7 +9,7 @@ import { provisionRetellAgent } from "@/lib/retell/provision";
  * POST /api/provision-phone
  *
  * Self-serve: tenant can provision their own Retell phone number.
- * Requires active subscription (not trialing) to prevent cost exposure.
+ * Allowed during trial or with active subscription.
  */
 export async function POST() {
   try {
@@ -44,8 +44,8 @@ export async function POST() {
       });
     }
 
-    // Gate: must be a paying customer
-    if (tenant.subscriptionStatus !== "active") {
+    // Gate: must be trialing or paying
+    if (tenant.subscriptionStatus !== "active" && tenant.subscriptionStatus !== "trialing") {
       return NextResponse.json(
         { error: "Phone provisioning requires an active subscription. Please subscribe first." },
         { status: 403 }
