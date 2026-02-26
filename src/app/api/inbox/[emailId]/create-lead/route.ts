@@ -120,17 +120,6 @@ export async function POST(
       })
       .where(eq(emailLog.id, emailId));
 
-    // Notify owner (non-blocking)
-    import("@/lib/services/notify-owner").then(({ notifyOwnerNewLead }) => {
-      notifyOwnerNewLead(tenant.tenantId, {
-        callerName: contactName || contactEmail,
-        propertyAddress,
-        surveyType: safeSurveyType,
-        urgency,
-        source: "email",
-      }).catch(() => {});
-    });
-
     return NextResponse.json({ success: true, leadId: newLead.id, contactId });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
