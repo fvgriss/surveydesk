@@ -5,8 +5,8 @@ import { Phone } from "lucide-react";
 import { ProspectsClient } from "./prospects-client";
 
 export default async function ProspectsPage() {
-  const salesPhoneNumber = process.env.RETELL_SALES_PHONE_NUMBER || null;
-  const salesAgentId = process.env.RETELL_SALES_AGENT_ID || null;
+  const salesPhoneNumber = process.env.SUPERADMIN_RETELL_PHONE_NUMBER || null;
+  const salesAgentId = process.env.SUPERADMIN_RETELL_AGENT_ID || null;
   const configured = salesPhoneNumber && salesPhoneNumber !== "+1XXXXXXXXXX";
 
   const allProspects = await db

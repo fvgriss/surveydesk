@@ -56,8 +56,8 @@ export default async function AdminDashboard() {
     .orderBy(desc(tenants.createdAt))
     .limit(10);
 
-  const salesAgentId = process.env.RETELL_SALES_AGENT_ID || null;
-  const salesPhoneNumber = process.env.RETELL_SALES_PHONE_NUMBER || null;
+  const salesAgentId = process.env.SUPERADMIN_RETELL_AGENT_ID || null;
+  const salesPhoneNumber = process.env.SUPERADMIN_RETELL_PHONE_NUMBER || null;
 
   return (
     <div className="p-6">
