@@ -173,35 +173,71 @@ async function createLead(
 
     const structuredNotes = noteParts.length > 0 ? noteParts.join("\n") : null;
 
-    // Create the lead
-    const [newLead] = await db
-      .insert(leads)
-      .values({
-        tenantId,
-        contactId,
-        propertyAddress: args.property_address || "Address TBD",
-        surveyType: surveyType as any,
+    // Deduplicate: if the agent already saved a lead for this call, update it
+    const callId = callData?.call_id || null;
+    let existingLead = null;
+    if (callId) {
+      const [found] = await db
+        .select({ id: leads.id })
+        .from(leads)
+        .where(and(eq(leads.callLogId, callId), eq(leads.tenantId, tenantId)))
+        .limit(1);
+      existingLead = found || null;
+    }
+
+    let leadId: string;
+
+    if (existingLead) {
+      // Update the existing lead with corrected info
+      const [updated] = await db
+        .update(leads)
+        .set({
+          contactId,
+          propertyAddress: args.property_address || "Address TBD",
+          surveyType: surveyType as any,
+          urgency: urgency as any,
+          callerEmail: args.caller_email || null,
+          callerPhone: callerPhone || null,
+          specialRequests: args.special_requests || null,
+          notes: structuredNotes,
+          updatedAt: new Date(),
+        })
+        .where(eq(leads.id, existingLead.id))
+        .returning();
+      leadId = updated.id;
+      console.log(`[create_lead] Updated existing lead: ${leadId} at ${args.property_address}`);
+    } else {
+      // Create a new lead
+      const [newLead] = await db
+        .insert(leads)
+        .values({
+          tenantId,
+          contactId,
+          propertyAddress: args.property_address || "Address TBD",
+          surveyType: surveyType as any,
+          source: "phone_intake",
+          status: "new",
+          urgency: urgency as any,
+          callerEmail: args.caller_email || null,
+          callerPhone: callerPhone || null,
+          specialRequests: args.special_requests || null,
+          notes: structuredNotes,
+          callLogId: callId,
+        })
+        .returning();
+      leadId = newLead.id;
+      console.log(`[create_lead] Created lead: ${leadId} at ${args.property_address}`);
+
+      // Notify the tenant owner (non-blocking)
+      const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
+      notifyOwnerNewLead(tenantId, {
+        callerName: args.caller_name,
+        propertyAddress: args.property_address,
+        surveyType,
+        urgency,
         source: "phone_intake",
-        status: "new",
-        urgency: urgency as any,
-        callerEmail: args.caller_email || null,
-        callerPhone: callerPhone || null,
-        specialRequests: args.special_requests || null,
-        notes: structuredNotes,
-      })
-      .returning();
-
-    console.log(`[create_lead] Created lead: ${newLead.id} at ${args.property_address}`);
-
-    // Notify the tenant owner (non-blocking)
-    const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
-    notifyOwnerNewLead(tenantId, {
-      callerName: args.caller_name,
-      propertyAddress: args.property_address,
-      surveyType,
-      urgency,
-      source: "phone_intake",
-    }).catch(() => {});
+      }).catch(() => {});
+    }
 
     return `Got it. I've created a lead for a ${surveyType.replace("_", " ")} survey at ${args.property_address || "that property"}. Someone from our office will prepare a quote and get back to you within a few hours.`;
   } catch (error) {
@@ -323,27 +359,62 @@ async function qualifyProspect(
     const firmName = args.firm_name || "Unknown Firm";
     const contactName = args.contact_name || "Unknown";
 
-    // Insert into platform-level prospects table (not tenant-scoped)
-    const [prospect] = await db
-      .insert(prospects)
-      .values({
-        firmName,
-        contactName,
-        email: args.contact_email || null,
-        phone: callerPhone,
-        firmSize: args.firm_size || null,
-        currentTools: args.current_tools || null,
-        painPoints: args.pain_points || null,
-        interestLevel: args.interest_level || null,
-        status: "new",
-        callId: callData?.call_id || null,
-      })
-      .returning();
+    // Deduplicate: if the agent already saved a prospect for this call, update it
+    const callId = callData?.call_id || null;
+    let prospect;
+    let isNew = false;
 
-    console.log(`[qualify_prospect] Created prospect: ${prospect.id} — ${firmName} (${args.interest_level || "unknown"})`);
+    if (callId) {
+      const [existing] = await db
+        .select()
+        .from(prospects)
+        .where(eq(prospects.callId, callId))
+        .limit(1);
 
-    // Send follow-up email + SMS (non-blocking)
-    if (args.contact_email) {
+      if (existing) {
+        const [updated] = await db
+          .update(prospects)
+          .set({
+            firmName,
+            contactName,
+            email: args.contact_email || null,
+            phone: callerPhone,
+            firmSize: args.firm_size || null,
+            currentTools: args.current_tools || null,
+            painPoints: args.pain_points || null,
+            interestLevel: args.interest_level || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(prospects.id, existing.id))
+          .returning();
+        prospect = updated;
+        console.log(`[qualify_prospect] Updated prospect: ${prospect.id} — ${firmName}`);
+      }
+    }
+
+    if (!prospect) {
+      const [created] = await db
+        .insert(prospects)
+        .values({
+          firmName,
+          contactName,
+          email: args.contact_email || null,
+          phone: callerPhone,
+          firmSize: args.firm_size || null,
+          currentTools: args.current_tools || null,
+          painPoints: args.pain_points || null,
+          interestLevel: args.interest_level || null,
+          status: "new",
+          callId,
+        })
+        .returning();
+      prospect = created;
+      isNew = true;
+      console.log(`[qualify_prospect] Created prospect: ${prospect.id} — ${firmName} (${args.interest_level || "unknown"})`);
+    }
+
+    // Send follow-up email + SMS only for new prospects (not updates)
+    if (isNew && args.contact_email) {
       const { sendProspectFollowUp } = await import(
         "@/lib/services/prospect-follow-up"
       );
