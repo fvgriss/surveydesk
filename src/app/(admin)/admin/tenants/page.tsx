@@ -18,7 +18,7 @@ export default async function TenantsPage() {
       retellPhoneNumber: tenants.retellPhoneNumber,
       onboardingComplete: tenants.onboardingComplete,
       createdAt: tenants.createdAt,
-      userCount: sql<number>`(SELECT COUNT(*) FROM users WHERE users.tenant_id = ${tenants.id})`.as("user_count"),
+      userCount: sql<number>`(SELECT count(*) FROM users WHERE users.tenant_id = tenants.id)`.as("user_count"),
     })
     .from(tenants)
     .orderBy(desc(tenants.createdAt));
