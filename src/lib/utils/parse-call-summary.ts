@@ -38,6 +38,41 @@ const SURVEY_TYPE_MAP: Record<string, string> = {
   route: "route",
 };
 
+/**
+ * Strip conversational filler that the AI agent sometimes appends to
+ * what should be a clean property address.
+ *
+ * "114 Robert Street and provided their contact details" → "114 Robert Street"
+ * "113 Robert Street for next week"                      → "113 Robert Street"
+ */
+export function sanitizePropertyAddress(raw: string): string {
+  let addr = raw.trim();
+
+  const tailPatterns = [
+    // "… and provided their contact details / and expressed urgency / and said …"
+    /\s+and\s+(?:provided|gave|shared|mentioned|expressed|stated|said|noted|asked|requested)\b.*$/i,
+    // "… providing her contact details …"
+    /\s+providing\s+(?:her|his|their|the|contact|details|information)\b.*$/i,
+    // "… expressing urgency …"
+    /\s+expressing\s+.*$/i,
+    // "… for next week / for a boundary survey / for this month"
+    /\s+for\s+(?:next|this|the|a|as)\s+(?:week|month|survey|quote|boundary|alta|topographic|as[.\s_]?built|subdivision|construction|elevation|soon)\b.*$/i,
+    // "… she also mentioned / he wants / they need …"
+    /\s+(?:she|he|they)\s+(?:also|mentioned|provided|said|asked|expressed|wants?|needs?)\b.*$/i,
+    // ", and the caller / , but they …"
+    /[,\s]+\s*(?:and|but)\s+(?:she|he|they|the\s+(?:caller|user|customer|client))\b.*$/i,
+  ];
+
+  for (const pattern of tailPatterns) {
+    addr = addr.replace(pattern, "");
+  }
+
+  // Clean trailing punctuation
+  addr = addr.replace(/[.,;:]+$/, "").trim();
+
+  return addr || raw.trim();
+}
+
 export function parseCallSummary(
   summary: string | null,
   transcript: string | null
@@ -103,7 +138,7 @@ export function parseCallSummary(
       // Remove trailing periods or commas
       addr = addr.replace(/[.,]+$/, "").trim();
       if (addr.length > 5 && /\d/.test(addr)) {
-        result.propertyAddress = addr;
+        result.propertyAddress = sanitizePropertyAddress(addr);
         break;
       }
     }

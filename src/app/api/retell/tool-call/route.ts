@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { projects, contacts, leads, fieldVisits, crews, prospects } from "@/db/schema";
-import { eq, and, ilike } from "drizzle-orm";
+import { eq, and, ilike, desc, gte } from "drizzle-orm";
+import { sanitizePropertyAddress } from "@/lib/utils/parse-call-summary";
 
 /**
  * POST /api/retell/tool-call?fn=create_lead
@@ -175,7 +176,9 @@ async function createLead(
 
     // Deduplicate: if the agent already saved a lead for this call, update it
     const callId = callData?.call_id || null;
-    let existingLead = null;
+    let existingLead: { id: string } | null = null;
+
+    // Strategy 1: Match by Retell call_id stored in callLogId
     if (callId) {
       const [found] = await db
         .select({ id: leads.id })
@@ -185,6 +188,37 @@ async function createLead(
       existingLead = found || null;
     }
 
+    // Strategy 2: Match by contact + source + recency (handles missing call_id
+    // or callLogId overwritten by webhook)
+    if (!existingLead) {
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000);
+      const phoneConditions = [
+        eq(leads.tenantId, tenantId),
+        eq(leads.source, "phone_intake"),
+        gte(leads.createdAt, twoMinAgo),
+      ];
+
+      if (contactId) {
+        phoneConditions.push(eq(leads.contactId, contactId));
+      } else if (callerPhone) {
+        phoneConditions.push(eq(leads.callerPhone, callerPhone));
+      }
+
+      if (contactId || callerPhone) {
+        const [found] = await db
+          .select({ id: leads.id })
+          .from(leads)
+          .where(and(...phoneConditions))
+          .orderBy(desc(leads.createdAt))
+          .limit(1);
+        existingLead = found || null;
+      }
+    }
+
+    const cleanAddress = args.property_address
+      ? sanitizePropertyAddress(args.property_address)
+      : "Address TBD";
+
     let leadId: string;
 
     if (existingLead) {
@@ -193,7 +227,7 @@ async function createLead(
         .update(leads)
         .set({
           contactId,
-          propertyAddress: args.property_address || "Address TBD",
+          propertyAddress: cleanAddress,
           surveyType: surveyType as any,
           urgency: urgency as any,
           callerEmail: args.caller_email || null,
@@ -205,7 +239,7 @@ async function createLead(
         .where(eq(leads.id, existingLead.id))
         .returning();
       leadId = updated.id;
-      console.log(`[create_lead] Updated existing lead: ${leadId} at ${args.property_address}`);
+      console.log(`[create_lead] Updated existing lead: ${leadId} at ${cleanAddress}`);
     } else {
       // Create a new lead
       const [newLead] = await db
@@ -213,7 +247,7 @@ async function createLead(
         .values({
           tenantId,
           contactId,
-          propertyAddress: args.property_address || "Address TBD",
+          propertyAddress: cleanAddress,
           surveyType: surveyType as any,
           source: "phone_intake",
           status: "new",
@@ -232,14 +266,14 @@ async function createLead(
       const { notifyOwnerNewLead } = await import("@/lib/services/notify-owner");
       notifyOwnerNewLead(tenantId, {
         callerName: args.caller_name,
-        propertyAddress: args.property_address,
+        propertyAddress: cleanAddress,
         surveyType,
         urgency,
         source: "phone_intake",
       }).catch(() => {});
     }
 
-    return `Got it. I've created a lead for a ${surveyType.replace("_", " ")} survey at ${args.property_address || "that property"}. Someone from our office will prepare a quote and get back to you within a few hours.`;
+    return `Got it. I've created a lead for a ${surveyType.replace("_", " ")} survey at ${cleanAddress}. Someone from our office will prepare a quote and get back to you within a few hours.`;
   } catch (error) {
     console.error("[create_lead] Error creating lead:", error);
     return `Got it. I'll have someone from our office prepare a quote for that ${args.survey_type || "survey"} and get back to you shortly.`;

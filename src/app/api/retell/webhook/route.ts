@@ -140,7 +140,18 @@ export async function POST(request: NextRequest) {
     let linkedLeadId: string | null = null;
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-    if (matchedContactId) {
+    // Strategy 1: Direct match by Retell call_id stored in callLogId by tool-call route
+    if (call.call_id) {
+      const [found] = await db
+        .select({ id: leads.id })
+        .from(leads)
+        .where(and(eq(leads.callLogId, call.call_id), eq(leads.tenantId, tenantId)))
+        .limit(1);
+      if (found) linkedLeadId = found.id;
+    }
+
+    // Strategy 2: Match by contact + source + recency
+    if (!linkedLeadId && matchedContactId) {
       const [recentLead] = await db
         .select({ id: leads.id })
         .from(leads)
@@ -160,15 +171,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Also try matching by retell call_id in case the tool-call created a lead
-    // but contact phone didn't match
-    if (!linkedLeadId) {
+    // Strategy 3: Match by callerPhone + source + recency (when contact wasn't matched
+    // but tool-call already created a lead with this phone number)
+    if (!linkedLeadId && callerPhone) {
       const [recentLead] = await db
         .select({ id: leads.id })
         .from(leads)
         .where(
           and(
             eq(leads.tenantId, tenantId),
+            eq(leads.callerPhone, callerPhone),
             eq(leads.source, "phone_intake"),
             gte(leads.createdAt, fiveMinAgo),
           )

@@ -137,7 +137,18 @@ export async function GET(request: Request) {
         ? new Date(call.start_timestamp - 5 * 60 * 1000)
         : new Date(Date.now() - 60 * 60 * 1000);
 
-      if (matchedContactId) {
+      // Strategy 1: Direct match by Retell call_id stored in callLogId
+      if (call.call_id) {
+        const [found] = await db
+          .select({ id: leads.id })
+          .from(leads)
+          .where(and(eq(leads.callLogId, call.call_id), eq(leads.tenantId, tenantId)))
+          .limit(1);
+        if (found) linkedLeadId = found.id;
+      }
+
+      // Strategy 2: Match by contact + source + recency
+      if (!linkedLeadId && matchedContactId) {
         const [recentLead] = await db
           .select({ id: leads.id })
           .from(leads)
@@ -145,6 +156,25 @@ export async function GET(request: Request) {
             and(
               eq(leads.tenantId, tenantId),
               eq(leads.contactId, matchedContactId),
+              eq(leads.source, "phone_intake"),
+              gte(leads.createdAt, fiveMinWindow)
+            )
+          )
+          .orderBy(desc(leads.createdAt))
+          .limit(1);
+
+        if (recentLead) linkedLeadId = recentLead.id;
+      }
+
+      // Strategy 3: Match by callerPhone + source + recency
+      if (!linkedLeadId && callerPhone) {
+        const [recentLead] = await db
+          .select({ id: leads.id })
+          .from(leads)
+          .where(
+            and(
+              eq(leads.tenantId, tenantId),
+              eq(leads.callerPhone, callerPhone),
               eq(leads.source, "phone_intake"),
               gte(leads.createdAt, fiveMinWindow)
             )
