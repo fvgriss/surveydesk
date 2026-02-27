@@ -21,6 +21,7 @@ import {
   Upload,
   Trash2,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 import { InvoiceForm } from "./invoice-form";
 import { PaymentForm } from "./payment-form";
 
@@ -642,7 +643,7 @@ export function ProjectDetailClient({
               {contact.phone && (
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <Phone size={12} />
-                  {contact.phone}
+                  {formatPhone(contact.phone)}
                 </div>
               )}
               {contact.email && (

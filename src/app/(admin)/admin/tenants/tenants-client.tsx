@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Building2, RefreshCw, Phone } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Tenant = {
   id: string;
@@ -414,8 +415,8 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
                     </td>
                     <td className="px-4 py-3">
                       {t.retellPhoneNumber ? (
-                        <span className="text-xs text-gray-600 font-mono">
-                          {t.retellPhoneNumber}
+                        <span className="text-xs text-gray-600">
+                          {formatPhone(t.retellPhoneNumber)}
                         </span>
                       ) : (
                         <button

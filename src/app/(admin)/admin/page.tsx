@@ -3,6 +3,7 @@ import { tenants, users, prospects } from "@/db/schema";
 import { sql, desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { Building2, Users, Plus, Clock, CreditCard, Zap, Megaphone, Phone } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 export default async function AdminDashboard() {
   // Get counts
@@ -177,7 +178,7 @@ export default async function AdminDashboard() {
             <div>
               <span className="text-xs text-gray-400 uppercase tracking-wide">Phone</span>
               <p className="font-mono text-gray-800">
-                {salesPhoneNumber && salesPhoneNumber !== "+1XXXXXXXXXX" ? salesPhoneNumber : <span className="text-gray-400">Not configured</span>}
+                {salesPhoneNumber && salesPhoneNumber !== "+1XXXXXXXXXX" ? formatPhone(salesPhoneNumber) : <span className="text-gray-400">Not configured</span>}
               </p>
             </div>
             <div>
@@ -267,8 +268,8 @@ export default async function AdminDashboard() {
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs font-mono">
-                        {t.retellPhoneNumber || "—"}
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {t.retellPhoneNumber ? formatPhone(t.retellPhoneNumber) : "—"}
                       </td>
                       <td className="px-4 py-3 text-gray-400">
                         {new Date(t.createdAt).toLocaleDateString()}

@@ -21,6 +21,7 @@ import {
   Check,
   Trash2,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Call = {
   id: string;
@@ -563,7 +564,7 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
                       <span className="flex items-center gap-1">
                         <Phone size={10} className={selectedLead.callerPhone || selectedLead.contactPhone ? "text-gray-400" : "text-gray-300"} />
                         {selectedLead.callerPhone || selectedLead.contactPhone ? (
-                          <span className="text-gray-500">{selectedLead.callerPhone || selectedLead.contactPhone}</span>
+                          <span className="text-gray-500">{formatPhone(selectedLead.callerPhone || selectedLead.contactPhone!)}</span>
                         ) : (
                           <span className="text-gray-300 italic">No phone</span>
                         )}

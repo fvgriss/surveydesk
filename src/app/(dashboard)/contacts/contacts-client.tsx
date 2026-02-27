@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Contact = {
   id: string;
@@ -179,7 +180,7 @@ export function ContactsClient({ contacts, totalCount, typeStats }: ContactsClie
                     {contact.phone && (
                       <span className="flex items-center gap-1">
                         <Phone size={10} />
-                        {contact.phone}
+                        {formatPhone(contact.phone)}
                       </span>
                     )}
                     {(contact.city || contact.state) && (

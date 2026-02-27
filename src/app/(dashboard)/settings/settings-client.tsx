@@ -21,6 +21,7 @@ import {
   BellOff,
   UserPlus,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Firm = {
   id: string;
@@ -642,7 +643,7 @@ function MembersSection({
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">Inactive</span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">{member.email}{member.phone ? ` · ${member.phone}` : ""}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{member.email}{member.phone ? ` · ${formatPhone(member.phone)}` : ""}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {isOwner && (() => {
@@ -1181,15 +1182,6 @@ function NotificationsTab({ prefs }: { prefs: NotificationPrefs }) {
 
 // ─── Integrations Tab ───────────────────────────────────────────
 
-function formatPhoneDisplay(e164: string): string {
-  const digits = e164.replace(/\D/g, "");
-  const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (national.length === 10) {
-    return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
-  }
-  return e164;
-}
-
 function IntegrationsTab({ gmail, retellPhone, subscriptionStatus }: { gmail: GmailStatus; retellPhone: string | null; subscriptionStatus: string }) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
@@ -1260,7 +1252,7 @@ function IntegrationsTab({ gmail, retellPhone, subscriptionStatus }: { gmail: Gm
         {retellPhone && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Phone Number</span>
-            <p className="text-lg font-semibold text-gray-900 mt-0.5 font-mono">{formatPhoneDisplay(retellPhone)}</p>
+            <p className="text-lg font-semibold text-gray-900 mt-0.5 font-mono">{formatPhone(retellPhone)}</p>
           </div>
         )}
 

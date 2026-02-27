@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Phone, Loader2, Plus, X, UserPlus, Check } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
@@ -17,20 +18,6 @@ const ROLE_OPTIONS = [
   { value: "crew_chief", label: "Crew Chief" },
   { value: "instrument_person", label: "Instrument Person" },
 ];
-
-/**
- * Format E.164 phone number (+15205551234) to human-readable ((520) 555-1234)
- */
-function formatPhone(e164: string): string {
-  const digits = e164.replace(/\D/g, "");
-  const national = digits.length === 11 && digits.startsWith("1")
-    ? digits.slice(1)
-    : digits;
-  if (national.length === 10) {
-    return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
-  }
-  return e164;
-}
 
 interface TenantData {
   name: string;

@@ -18,6 +18,7 @@ import {
   Clock,
   Trash2,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Contact = {
   id: string;
@@ -375,7 +376,7 @@ export function ContactDetailClient({
                 {contact.phone && (
                   <div className="flex items-center gap-2 text-sm">
                     <Phone size={14} className="text-gray-400 flex-shrink-0" />
-                    <a href={`tel:${contact.phone}`} className="text-gray-700 hover:text-blue-600">{contact.phone}</a>
+                    <a href={`tel:${contact.phone}`} className="text-gray-700 hover:text-blue-600">{formatPhone(contact.phone)}</a>
                   </div>
                 )}
                 {(contact.address || contact.city || contact.state) && (

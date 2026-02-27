@@ -16,6 +16,7 @@ import {
   PhoneOff,
   Trash2,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type TenantUser = {
   id: string;
@@ -277,8 +278,8 @@ export default function TenantDetailPage() {
             {tenant.retellPhoneNumber && (
               <div className="flex items-center gap-2">
                 <Phone size={12} className="text-gray-400" />
-                <span className="font-mono text-xs text-gray-600">
-                  {tenant.retellPhoneNumber}
+                <span className="text-xs text-gray-600">
+                  {formatPhone(tenant.retellPhoneNumber)}
                 </span>
                 <button
                   onClick={handleReleasePhone}

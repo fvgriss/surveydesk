@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { prospects, callLog } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { Phone } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 import { ProspectsClient } from "./prospects-client";
 
 export default async function ProspectsPage() {
@@ -64,7 +65,7 @@ export default async function ProspectsPage() {
         <div className="mx-6 mt-6 mb-0 flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5">
           <Phone size={14} className="text-indigo-600" />
           <p className="text-sm text-indigo-800">
-            Sales line: <span className="font-mono font-medium">{salesPhoneNumber}</span>
+            Sales line: <span className="font-medium">{formatPhone(salesPhoneNumber!)}</span>
             {salesAgentId && salesAgentId !== "agent_..." && (
               <span className="text-indigo-500 ml-3 text-xs">Agent: {salesAgentId}</span>
             )}

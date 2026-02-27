@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type Tenant = {
   id: string;
@@ -81,7 +82,7 @@ export default function ReassignPhonePage() {
             <option value="">Select a tenant...</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} {t.retellPhoneNumber ? `(${t.retellPhoneNumber})` : "(no phone)"} {!t.retellAgentId ? "⚠️ no agent" : ""}
+                {t.name} {t.retellPhoneNumber ? `(${formatPhone(t.retellPhoneNumber)})` : "(no phone)"} {!t.retellAgentId ? "⚠️ no agent" : ""}
               </option>
             ))}
           </select>

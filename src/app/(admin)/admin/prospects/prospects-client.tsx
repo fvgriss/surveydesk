@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock, UserPlus, Trash2 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 type CallData = {
   summary: string | null;
@@ -217,7 +218,7 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                     <td className="px-4 py-3">
                       <div className="text-gray-800">{p.contactName}</div>
                       <div className="text-xs text-gray-400">
-                        {p.email || p.phone || "—"}
+                        {p.email || (p.phone ? formatPhone(p.phone) : null) || "—"}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -275,7 +276,7 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                           {p.phone && (
                             <div>
                               <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</div>
-                              <div className="text-gray-800">{p.phone}</div>
+                              <div className="text-gray-800">{formatPhone(p.phone)}</div>
                             </div>
                           )}
                           {p.currentTools && (
@@ -320,8 +321,8 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                                 {p.call.duration ? formatDuration(p.call.duration) : "—"}
                               </div>
                               {p.call.callerPhone && (
-                                <div className="text-xs text-gray-500 font-mono">
-                                  From: {p.call.callerPhone}
+                                <div className="text-xs text-gray-500">
+                                  From: {formatPhone(p.call.callerPhone)}
                                 </div>
                               )}
                             </div>

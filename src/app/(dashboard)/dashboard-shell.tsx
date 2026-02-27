@@ -22,6 +22,7 @@ import {
   Settings,
   CreditCard,
 } from "lucide-react";
+import { formatPhone } from "@/lib/utils/format-phone";
 
 const ADMIN_ROLES = ["owner", "office_manager"];
 
@@ -41,16 +42,6 @@ const BOTTOM_NAV_ITEMS = [
   { href: "/subscription", label: "Subscription", icon: CreditCard, roles: ["owner", "office_manager"] },
 ];
 
-function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return phone;
-}
 
 export function DashboardShell({
   user,
