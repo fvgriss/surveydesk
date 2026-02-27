@@ -19,6 +19,13 @@ export async function checkSuperAdmin(): Promise<{
 
   if (!authUser) return null;
 
+  const email = authUser.email || "";
+
+  // Whitelisted domain — all @terrainplot.com users are super admins
+  if (email.endsWith("@terrainplot.com")) {
+    return { isSuperAdmin: true, authId: authUser.id, email };
+  }
+
   const [admin] = await db
     .select({
       id: superAdmins.id,
@@ -36,11 +43,7 @@ export async function checkSuperAdmin(): Promise<{
     .limit(1);
 
   if (!admin) {
-    return {
-      isSuperAdmin: false,
-      authId: authUser.id,
-      email: authUser.email || "",
-    };
+    return { isSuperAdmin: false, authId: authUser.id, email };
   }
 
   return {
