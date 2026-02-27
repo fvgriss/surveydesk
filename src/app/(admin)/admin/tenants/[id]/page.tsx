@@ -13,6 +13,8 @@ import {
   LogIn,
   RotateCcw,
   Phone,
+  PhoneOff,
+  Trash2,
 } from "lucide-react";
 
 type TenantUser = {
@@ -147,6 +149,39 @@ export default function TenantDetailPage() {
     }
   };
 
+  const handleReleasePhone = async () => {
+    if (!tenant?.retellPhoneNumber) return;
+    if (!confirm(`Release phone number ${tenant.retellPhoneNumber}? This will stop the AI agent for this tenant and you'll stop being billed for it.`)) return;
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/release-phone`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to release phone");
+      } else {
+        setTenant((t) => t ? { ...t, retellPhoneNumber: null } : t);
+      }
+    } catch {
+      setError("Network error");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete ${tenant?.name || "this tenant"}? This will permanently delete all their data (users, leads, projects, invoices, etc.) and release their phone number. This cannot be undone.`)) return;
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to delete");
+      } else {
+        router.push("/admin/tenants");
+      }
+    } catch {
+      setError("Network error");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center gap-2 text-gray-400">
@@ -240,11 +275,18 @@ export default function TenantDetailPage() {
               </span>
             </div>
             {tenant.retellPhoneNumber && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Phone size={12} className="text-gray-400" />
                 <span className="font-mono text-xs text-gray-600">
                   {tenant.retellPhoneNumber}
                 </span>
+                <button
+                  onClick={handleReleasePhone}
+                  className="flex items-center gap-1 text-[11px] text-red-500 hover:text-red-700 font-medium"
+                >
+                  <PhoneOff size={10} />
+                  Release
+                </button>
               </div>
             )}
             <div>
@@ -426,6 +468,21 @@ export default function TenantDetailPage() {
             ))
           )}
         </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="mt-6 border border-red-200 rounded-xl p-6 bg-red-50/30">
+        <h2 className="text-sm font-semibold text-red-800 mb-1">Danger Zone</h2>
+        <p className="text-xs text-red-600 mb-4">
+          Permanently delete this tenant and all their data. This cannot be undone.
+        </p>
+        <button
+          onClick={handleDelete}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+        >
+          <Trash2 size={14} />
+          Delete Tenant
+        </button>
       </div>
     </div>
   );

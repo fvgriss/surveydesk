@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Retell from "retell-sdk";
 import { checkSuperAdmin } from "@/lib/utils/check-super-admin";
 import { db } from "@/db";
 import { tenants, users, projects, invoices } from "@/db/schema";
@@ -116,6 +117,62 @@ export async function PATCH(
     console.error("Error updating tenant PATCH /api/admin/tenants/[id]:", error);
     return NextResponse.json(
       { error: "Failed to update tenant" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/admin/tenants/[id] — delete tenant and release Retell phone
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const admin = await checkSuperAdmin();
+    if (!admin?.isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    const [tenant] = await db
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        retellPhoneNumber: tenants.retellPhoneNumber,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, id))
+      .limit(1);
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+
+    // Release Retell phone number if one exists
+    if (tenant.retellPhoneNumber) {
+      try {
+        const apiKey = process.env.RETELL_API_KEY;
+        if (apiKey) {
+          const retell = new Retell({ apiKey });
+          await retell.phoneNumber.delete(tenant.retellPhoneNumber);
+          console.log(`[delete-tenant] Released Retell phone ${tenant.retellPhoneNumber} for ${tenant.name}`);
+        }
+      } catch (phoneErr) {
+        // Log but don't block deletion — phone may already be gone
+        console.warn(`[delete-tenant] Failed to release phone ${tenant.retellPhoneNumber}:`, phoneErr);
+      }
+    }
+
+    // Delete tenant — all related data cascades
+    await db.delete(tenants).where(eq(tenants.id, id));
+
+    console.log(`[delete-tenant] Deleted tenant ${tenant.name} (${id})`);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting tenant DELETE /api/admin/tenants/[id]:", error);
+    return NextResponse.json(
+      { error: "Failed to delete tenant" },
       { status: 500 }
     );
   }
