@@ -40,7 +40,7 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-type FilterTab = "all" | "new" | "contacted" | "booked";
+type FilterTab = "all" | "new" | "contacted" | "booked" | "converted" | "lost";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 border-blue-200",
@@ -93,12 +93,21 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
     return true;
   });
 
-  const tabs: { key: FilterTab; label: string; count: number }[] = [
-    { key: "all", label: "All", count: prospectList.length },
-    { key: "new", label: "New", count: prospectList.filter((p) => p.status === "new").length },
-    { key: "contacted", label: "Contacted", count: prospectList.filter((p) => p.status === "contacted").length },
-    { key: "booked", label: "Booked", count: prospectList.filter((p) => p.status === "booked").length },
+  const tabDefs: { key: FilterTab; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "new", label: "New" },
+    { key: "contacted", label: "Contacted" },
+    { key: "booked", label: "Booked" },
+    { key: "converted", label: "Converted" },
+    { key: "lost", label: "Lost" },
   ];
+
+  const tabs = tabDefs
+    .map((t) => ({
+      ...t,
+      count: t.key === "all" ? prospectList.length : prospectList.filter((p) => p.status === t.key).length,
+    }))
+    .filter((t) => t.key === "all" || t.key === "new" || t.count > 0);
 
   async function handleStatusChange(id: string, newStatus: string) {
     try {
