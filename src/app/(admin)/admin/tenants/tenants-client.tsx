@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Building2, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Search, Building2, RefreshCw, Phone } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -78,6 +79,7 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
 }
 
 export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
   const [provisioning, setProvisioning] = useState<string | null>(null);
@@ -85,6 +87,8 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const [updatingAgents, setUpdatingAgents] = useState(false);
   const [agentUpdateResult, setAgentUpdateResult] = useState<{ updated: number; failed: number } | null>(null);
+  const [syncingPhones, setSyncingPhones] = useState(false);
+  const [phoneSyncResult, setPhoneSyncResult] = useState<{ synced: number; total: number } | null>(null);
 
   const tenants = tenantList;
 
@@ -129,6 +133,23 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
       setProvisionError(`Agent update failed: ${msg}`);
     } finally {
       setUpdatingAgents(false);
+    }
+  }
+
+  async function handleSyncPhones() {
+    setSyncingPhones(true);
+    setPhoneSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/sync-retell-phones", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      setPhoneSyncResult({ synced: data.synced, total: data.total });
+      if (data.synced > 0) router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setProvisionError(`Phone sync failed: ${msg}`);
+    } finally {
+      setSyncingPhones(false);
     }
   }
 
@@ -182,6 +203,18 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncPhones}
+            disabled={syncingPhones}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              syncingPhones
+                ? "bg-gray-100 text-gray-400 cursor-wait"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Phone size={16} className={syncingPhones ? "animate-pulse" : ""} />
+            {syncingPhones ? "Syncing..." : "Sync Phones"}
+          </button>
           <button
             onClick={handleUpdateAllAgents}
             disabled={updatingAgents}
@@ -258,6 +291,20 @@ export function TenantsClient({ tenants: initialTenants }: { tenants: Tenant[] }
             {agentUpdateResult.failed > 0 && `, ${agentUpdateResult.failed} failed`}
           </p>
           <button onClick={() => setAgentUpdateResult(null)} className="text-gray-500 hover:text-gray-700 text-xs font-medium">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Phone sync result */}
+      {phoneSyncResult && (
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-green-800">
+            {phoneSyncResult.synced > 0
+              ? `Updated ${phoneSyncResult.synced} phone number${phoneSyncResult.synced !== 1 ? "s" : ""} (${phoneSyncResult.total} total checked)`
+              : `All ${phoneSyncResult.total} phone numbers are up to date`}
+          </p>
+          <button onClick={() => setPhoneSyncResult(null)} className="text-green-600 hover:text-green-800 text-xs font-medium">
             Dismiss
           </button>
         </div>
