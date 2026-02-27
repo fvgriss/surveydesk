@@ -26,13 +26,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    if (lead.status !== "lost" && lead.status !== "expired") {
-      return NextResponse.json(
-        { error: "Can only delete lost or expired leads" },
-        { status: 400 }
-      );
-    }
-
     // Check for active proposals linked to this lead
     const activeProposals = await db
       .select({ id: proposals.id })

@@ -42,3 +42,26 @@ export async function PATCH(
 
   return NextResponse.json({ prospect: updated });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await checkSuperAdmin();
+  if (!admin?.isSuperAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  const [deleted] = await db
+    .delete(prospects)
+    .where(eq(prospects.id, id))
+    .returning({ id: prospects.id });
+
+  if (!deleted) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true });
+}

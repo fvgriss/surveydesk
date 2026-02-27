@@ -670,14 +670,12 @@ export function IntakeClient({ calls, leads: initialLeads }: { calls: Call[]; le
                       <Phone size={14} />Call Client
                     </a>
                   )}
-                  {(selectedLead.status === "lost" || selectedLead.status === "expired") && (
-                    <button
-                      onClick={() => handleDeleteLead(selectedLead.id)}
-                      className="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 ml-auto"
-                    >
-                      <Trash2 size={14} />Delete
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDeleteLead(selectedLead.id)}
+                    className="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 ml-auto"
+                  >
+                    <Trash2 size={14} />Delete
+                  </button>
                 </div>
               </div>
             ) : (

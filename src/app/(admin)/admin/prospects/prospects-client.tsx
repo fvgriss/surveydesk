@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock, UserPlus } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock, UserPlus, Trash2 } from "lucide-react";
 
 type CallData = {
   summary: string | null;
@@ -77,7 +77,7 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
   const router = useRouter();
   const [prospectList, setProspectList] = useState(initial);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<FilterTab>("all");
+  const [tab, setTab] = useState<FilterTab>("new");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = prospectList.filter((p) => {
@@ -113,6 +113,18 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
       );
     } catch {
       alert("Failed to update status");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("Delete this prospect? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/prospects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setProspectList((prev) => prev.filter((p) => p.id !== id));
+      setExpandedId(null);
+    } catch {
+      alert("Failed to delete prospect");
     }
   }
 
@@ -363,6 +375,16 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                               Mark as Booked
                             </button>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(p.id);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 bg-red-50 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors ml-auto"
+                          >
+                            <Trash2 size={13} />
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
