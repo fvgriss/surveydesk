@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock } from "lucide-react";
+import Link from "next/link";
+import { Search, ChevronDown, ChevronUp, Mail, MessageSquare, Play, Clock, UserPlus } from "lucide-react";
 
 type CallData = {
   summary: string | null;
@@ -335,6 +336,34 @@ export function ProspectsClient({ prospects: initial }: { prospects: Prospect[] 
                             )}
                           </div>
                         )}
+
+                        {/* Actions */}
+                        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-3">
+                          <Link
+                            href={`/admin/tenants/create?${new URLSearchParams({
+                              ...(p.firmName ? { firmName: p.firmName } : {}),
+                              ...(p.contactName ? { ownerName: p.contactName } : {}),
+                              ...(p.email ? { ownerEmail: p.email, firmEmail: p.email } : {}),
+                              ...(p.phone ? { firmPhone: p.phone } : {}),
+                            }).toString()}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors"
+                          >
+                            <UserPlus size={13} />
+                            Create Account
+                          </Link>
+                          {p.status !== "converted" && p.status !== "booked" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(p.id, "booked");
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-green-200 text-green-700 bg-green-50 rounded-lg text-xs font-medium hover:bg-green-100 transition-colors"
+                            >
+                              Mark as Booked
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}

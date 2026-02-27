@@ -1,25 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, User, Loader2, Check } from "lucide-react";
 
 export default function CreateTenantPage() {
+  return (
+    <Suspense>
+      <CreateTenantForm />
+    </Suspense>
+  );
+}
+
+function CreateTenantForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
-    firmName: "",
-    firmEmail: "",
-    firmPhone: "",
+    firmName: searchParams.get("firmName") || "",
+    firmEmail: searchParams.get("firmEmail") || "",
+    firmPhone: searchParams.get("firmPhone") || "",
     firmAddress: "",
     firmCity: "",
     firmState: "",
     firmZip: "",
-    ownerName: "",
-    ownerEmail: "",
+    ownerName: searchParams.get("ownerName") || "",
+    ownerEmail: searchParams.get("ownerEmail") || "",
     ownerPassword: "",
   });
 

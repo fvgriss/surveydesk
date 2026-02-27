@@ -154,10 +154,10 @@ function buildFollowUpEmail(params: {
 
   const dataTableHtml = dataRows
     .map(
-      (row) =>
+      (row, i) =>
         `<tr>
-          <td style="padding: 8px 12px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; vertical-align: top;">${row.label}</td>
-          <td style="padding: 8px 12px; font-size: 14px; color: #1f2937;">${row.value}</td>
+          <td style="padding: 12px 16px; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; vertical-align: top; border-bottom: 1px solid ${i < dataRows.length - 1 ? '#f1f5f9' : 'transparent'};">${row.label}</td>
+          <td style="padding: 12px 16px; font-size: 14px; color: #f8fafc; border-bottom: 1px solid ${i < dataRows.length - 1 ? '#334155' : 'transparent'};">${row.value}</td>
         </tr>`
     )
     .join("");
@@ -167,104 +167,218 @@ function buildFollowUpEmail(params: {
 <html>
 <head>
   <meta charset="utf-8">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      color: #374151;
-      line-height: 1.6;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .container { background-color: #ffffff; padding: 40px 20px; }
-    .header { border-bottom: 3px solid #2563eb; margin-bottom: 30px; padding-bottom: 20px; }
-    .company-name { font-size: 24px; font-weight: bold; color: #1f2937; }
-    .greeting { font-size: 16px; margin-bottom: 20px; color: #1f2937; }
-    .section { margin-bottom: 25px; }
-    .section-content { font-size: 14px; color: #6b7280; line-height: 1.8; }
-    .data-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin: 20px 0; }
-    .data-card-header { background-color: #1e293b; padding: 12px 16px; }
-    .data-card-title { font-size: 13px; font-weight: 600; color: #ffffff; margin: 0; }
-    .data-card-subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-    .features { margin: 20px 0; }
-    .feature-item { font-size: 14px; color: #374151; padding: 6px 0 6px 24px; position: relative; }
-    .feature-item::before { content: "\\2713"; position: absolute; left: 0; color: #2563eb; font-weight: bold; }
-    .cta-wrapper { text-align: center; margin: 30px 0; }
-    .cta-button { display: inline-block; background-color: #2563eb; color: white !important; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; }
-    .trial-note { text-align: center; font-size: 13px; color: #9ca3af; margin-top: 8px; }
-    .footer { border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; font-size: 12px; color: #9ca3af; line-height: 1.8; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="company-name">SurveyDesk</div>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
 
-    <div class="greeting">Hi ${contactName},</div>
+  <!-- Hero -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center" style="padding: 48px 20px 32px;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding-bottom: 32px;">
+              <span style="font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Survey</span><span style="font-size: 28px; font-weight: 800; color: #3b82f6; letter-spacing: -0.5px;">Desk</span>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <h1 style="margin: 0 0 12px; font-size: 32px; font-weight: 800; color: #ffffff; line-height: 1.2; letter-spacing: -0.5px;">
+                Your call, captured.
+              </h1>
+              <p style="margin: 0; font-size: 16px; color: #94a3b8; line-height: 1.6;">
+                ${firstName}, you just spoke with our AI phone agent about ${firmName}. Here's everything it extracted — automatically, in real time.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="section">
-      <div class="section-content">
-        Thanks for chatting with us about ${firmName}. You just spoke with our AI phone agent — and here's what it captured from your call, automatically:
-      </div>
-    </div>
+  <!-- Data Card -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a;">
+    <tr>
+      <td align="center" style="padding: 0 20px 32px;">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155;">
+          <tr>
+            <td style="padding: 16px 16px 8px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="display: inline-block; background-color: #3b82f6; color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 4px;">From your call</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${dataTableHtml}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 16px 16px;">
+              <p style="margin: 0; font-size: 12px; color: #64748b; font-style: italic;">
+                This is exactly what your clients' intake calls would look like in SurveyDesk.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="data-card">
-      <div class="data-card-header">
-        <div class="data-card-title">Extracted from your call</div>
-        <div class="data-card-subtitle">This is what your clients' intake calls would look like in SurveyDesk</div>
-      </div>
-      <table style="width: 100%; border-collapse: collapse;">
-        ${dataTableHtml}
-      </table>
-    </div>
+  <!-- Body Content -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
+    <tr>
+      <td align="center" style="padding: 48px 20px 0;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td>
+              <p style="margin: 0 0 20px; font-size: 15px; color: #475569; line-height: 1.8;">
+                No manual data entry. No sticky notes. No missed details. Every call to ${firmName} would be captured the same way — leads created automatically and ready for your team to act on.
+              </p>
+              <p style="margin: 0 0 24px; font-size: 15px; color: #475569; line-height: 1.8;">
+                Beyond the AI phone agent, SurveyDesk gives you:
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="section">
-      <div class="section-content">
-        That happened in real time — no manual data entry, no sticky notes, no missed details. Every call to your firm would be captured the same way, with leads automatically created and ready for your team to act on.
-      </div>
-    </div>
+  <!-- Feature Grid -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
+    <tr>
+      <td align="center" style="padding: 0 20px 40px;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="50%" style="padding: 0 8px 16px 0; vertical-align: top;">
+              <table cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">&#128222;</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">AI Phone Agent</div>
+                    <div style="font-size: 12px; color: #64748b; line-height: 1.5;">Every call answered, every lead captured automatically</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td width="50%" style="padding: 0 0 16px 8px; vertical-align: top;">
+              <table cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">&#128203;</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">Proposals</div>
+                    <div style="font-size: 12px; color: #64748b; line-height: 1.5;">Professional proposals with online accept &amp; e-sign</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td width="50%" style="padding: 0 8px 0 0; vertical-align: top;">
+              <table cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">&#128197;</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">Scheduling</div>
+                    <div style="font-size: 12px; color: #64748b; line-height: 1.5;">Crew dispatch, field visits, and job tracking</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td width="50%" style="padding: 0 0 0 8px; vertical-align: top;">
+              <table cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">&#128176;</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">Invoicing</div>
+                    <div style="font-size: 12px; color: #64748b; line-height: 1.5;">Online payments, AR tracking, and auto reminders</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="section">
-      <div class="section-content">
-        Beyond the AI phone agent, SurveyDesk gives you:
-      </div>
-      <div class="features">
-        <div class="feature-item">Professional proposals with online accept/decline</div>
-        <div class="feature-item">Crew scheduling, field visit tracking, and job management</div>
-        <div class="feature-item">Invoicing with online payments and accounts receivable</div>
-        <div class="feature-item">Everything connected — from the first call to the final invoice</div>
-      </div>
-    </div>
+  <!-- CTA -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
+    <tr>
+      <td align="center" style="padding: 0 20px 48px;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center" style="padding: 32px; background-color: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd;">
+              <p style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: #0f172a;">
+                Let's get ${firmName} set up
+              </p>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #64748b;">
+                20 minutes — I'll get you live on a free 14-day trial during the call.
+              </p>
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${bookingUrl}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="17%" fillcolor="#2563eb" stroke="f">
+                <v:textbox inset="0,0,0,0"><center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">Book Your Setup Call</center></v:textbox>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <a href="${bookingUrl}" style="display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; letter-spacing: -0.2px;">Book Your Setup Call &rarr;</a>
+              <!--<![endif]-->
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="section">
-      <div class="section-content">
-        I'd love to spend 20 minutes getting ${firmName} set up so you can see it in action with your own data:
-      </div>
-    </div>
+  <!-- Sign-off -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff;">
+    <tr>
+      <td align="center" style="padding: 0 20px 48px;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td>
+              <p style="margin: 0 0 16px; font-size: 14px; color: #64748b; line-height: 1.7;">
+                Questions? Just reply to this email or call me at <strong style="color: #1e293b;">(512) 487-7511</strong>.
+              </p>
+              <p style="margin: 0; font-size: 14px; color: #374151;">
+                Talk soon,<br>
+                <strong>Vance</strong>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="cta-wrapper">
-      <a href="${bookingUrl}" class="cta-button">Book Your Setup Call</a>
-      <div class="trial-note">20 minutes &middot; I'll get you live on a free 14-day trial during the call</div>
-    </div>
+  <!-- Footer -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+    <tr>
+      <td align="center" style="padding: 24px 20px;">
+        <table width="600" cellpadding="0" cellspacing="0">
+          <tr>
+            <td>
+              <span style="font-size: 16px; font-weight: 800; color: #1e293b;">Survey</span><span style="font-size: 16px; font-weight: 800; color: #3b82f6;">Desk</span>
+              <span style="font-size: 12px; color: #94a3b8; margin-left: 12px;">The all-in-one platform for land surveyors</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top: 8px;">
+              <span style="font-size: 12px; color: #94a3b8;">vance@terrainplot.com</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-    <div class="section">
-      <div class="section-content">
-        If you have any questions in the meantime, just reply to this email or call me at (512) 487-7511.
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-content" style="color: #374151;">
-        Talk soon,<br>
-        <strong>Vance</strong>
-      </div>
-    </div>
-
-    <div class="footer">
-      <strong>SurveyDesk</strong><br>
-      Email: vance@terrainplot.com<br>
-    </div>
-  </div>
 </body>
 </html>`.trim();
 }
